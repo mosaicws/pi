@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pi config installer — idempotent
-# Default:  uses distro Node via apt (Debian 13+ ships Node 20), falls back to NodeSource if too old
+# Default:  installs Node.js LTS via fnm (https://github.com/Schniz/fnm) — clean, no apt bloat
 # Opt-in:   PI_RUNTIME=bun bash -c "..."  — uses Bun instead of Node
 #
 # Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
@@ -11,6 +11,7 @@ CONFIG_DIR="${PI_CONFIG_DIR:-$HOME/pi-config}"
 PI_DIR="${PI_AGENT_DIR:-$HOME/.pi/agent}"
 PI_RUNTIME="${PI_RUNTIME:-auto}"   # auto | node | bun
 NODE_MIN_MAJOR=20
+FNM_DIR="${FNM_DIR:-/usr/local/fnm}"
 
 log()  { printf '\033[1;34m[pi-config]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[pi-config]\033[0m %s\n' "$*" >&2; }
@@ -21,7 +22,7 @@ is_root() { [ "$(id -u)" = "0" ]; }
 SUDO=""
 if ! is_root; then
   if command -v sudo >/dev/null 2>&1; then SUDO="sudo"
-  else warn "Not running as root and no sudo found — apt-based installs will fail"; fi
+  else warn "Not running as root and no sudo found — installs will fail"; fi
 fi
 
 # --- Prerequisites ---
@@ -34,21 +35,17 @@ cleanup_stale_nodesource() {
   local ns_list="/etc/apt/sources.list.d/nodesource.list"
   local ns_key="/etc/apt/keyrings/nodesource.gpg"
   [ -f "$ns_list" ] || [ -f "$ns_key" ] || return 0
-
-  log "Found existing NodeSource repo, checking if apt can still use it..."
+  log "Found leftover NodeSource repo, checking..."
   local apt_out
   apt_out=$($SUDO apt-get update 2>&1 || true)
   if echo "$apt_out" | grep -qE "(Failed to fetch|Err:|error|Warning).*nodesource|nodesource.*(sqv|SHA1|Signing key)"; then
-    warn "NodeSource apt source is failing (commonly Debian 13's sqv policy rejecting SHA-1 certifications). Removing stale entries..."
+    warn "NodeSource apt source is failing (Debian 13 sqv policy). Removing..."
     $SUDO rm -f "$ns_list" "$ns_key"
     $SUDO apt-get update -qq
-    log "NodeSource cleanup complete"
-  else
-    log "NodeSource repo looks healthy, leaving it alone"
   fi
 }
 
-# --- Runtime selection helpers ---
+# --- Node presence check ---
 node_version_ok() {
   command -v node >/dev/null 2>&1 || return 1
   local major
@@ -56,41 +53,56 @@ node_version_ok() {
   [ -n "$major" ] && [ "$major" -ge "$NODE_MIN_MAJOR" ]
 }
 
-install_node_via_apt() {
-  log "Installing Node.js + npm via apt (distro packages)..."
-  $SUDO apt-get update -qq
-  if $SUDO apt-get install -y nodejs npm; then
-    if node_version_ok; then
-      log "Installed Node $(node -v), npm $(npm -v)"
-      return 0
-    fi
-    warn "Distro Node is $(node -v 2>/dev/null || echo 'n/a') — need >= v${NODE_MIN_MAJOR}"
+# --- fnm install: binary to /usr/local/bin ---
+install_fnm_binary() {
+  if command -v fnm >/dev/null 2>&1; then
+    log "fnm already installed: $(fnm --version)"
+    return
   fi
-  return 1
+  local fnm_arch
+  case "$(uname -m)" in
+    x86_64)          fnm_arch="linux" ;;
+    aarch64|arm64)   fnm_arch="arm64" ;;
+    *) die "Unsupported architecture: $(uname -m) (fnm supports x86_64 and arm64)" ;;
+  esac
+  log "Installing fnm ($fnm_arch) to /usr/local/bin/fnm..."
+  command -v unzip >/dev/null 2>&1 || { log "Installing unzip..."; $SUDO apt-get install -y unzip; }
+  local tmp; tmp=$(mktemp -d)
+  curl -fsSL "https://github.com/Schniz/fnm/releases/latest/download/fnm-${fnm_arch}.zip" -o "$tmp/fnm.zip"
+  unzip -q "$tmp/fnm.zip" -d "$tmp"
+  $SUDO install -m 755 "$tmp/fnm" /usr/local/bin/fnm
+  rm -rf "$tmp"
+  log "Installed fnm $(fnm --version)"
 }
 
-install_node_via_nodesource() {
-  log "Installing Node.js LTS via NodeSource..."
-  warn "NodeSource is known to fail signature checks on Debian 13 (sqv policy rejects SHA-1 certifications). If this errors, use 'PI_RUNTIME=bun' or upgrade to a distro shipping Node >= ${NODE_MIN_MAJOR}."
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO -E bash -
-  $SUDO apt-get install -y nodejs
-  node_version_ok || die "NodeSource install completed but Node version is still below v${NODE_MIN_MAJOR}"
-  log "Installed Node $(node -v), npm $(npm -v)"
+# --- Node install via fnm, symlinks to /usr/local/bin for system-wide PATH ---
+install_node_via_fnm() {
+  install_fnm_binary
+  $SUDO mkdir -p "$FNM_DIR"
+  log "Installing Node.js v${NODE_MIN_MAJOR} LTS via fnm into $FNM_DIR..."
+  $SUDO env FNM_DIR="$FNM_DIR" fnm install "$NODE_MIN_MAJOR"
+  $SUDO env FNM_DIR="$FNM_DIR" fnm alias default "$NODE_MIN_MAJOR"
+
+  # fnm's 'default' alias is a symlink to the installation root; bin/ is inside
+  local default_bin="$FNM_DIR/aliases/default/bin"
+  [ -d "$default_bin" ] || die "fnm default alias missing: $default_bin"
+
+  # System-wide symlinks so node/npm/npx work without shell init
+  for bin in node npm npx corepack; do
+    [ -e "$default_bin/$bin" ] && $SUDO ln -sfn "$default_bin/$bin" "/usr/local/bin/$bin"
+  done
+
+  node_version_ok || die "fnm installed Node but version check still fails"
+  log "Installed Node $(node -v), npm $(npm -v) via fnm"
 }
 
-install_node() {
-  cleanup_stale_nodesource
-  if install_node_via_apt; then return 0; fi
-  warn "Distro Node not suitable; falling back to NodeSource..."
-  install_node_via_nodesource
-}
-
+# --- Bun ---
 install_bun() {
   if command -v bun >/dev/null 2>&1; then
     log "Bun already installed: $(bun -v)"
     return
   fi
-  command -v unzip >/dev/null 2>&1 || { log "Installing unzip (required by Bun installer)"; $SUDO apt-get install -y unzip; }
+  command -v unzip >/dev/null 2>&1 || { log "Installing unzip..."; $SUDO apt-get install -y unzip; }
   log "Installing Bun..."
   curl -fsSL https://bun.sh/install | bash
   export BUN_INSTALL="$HOME/.bun"
@@ -99,24 +111,21 @@ install_bun() {
   log "Installed Bun $(bun -v)"
 }
 
+# --- Runtime selection ---
 case "$PI_RUNTIME" in
   auto)
+    cleanup_stale_nodesource
     if node_version_ok; then
       log "Using existing Node $(node -v)"
-      # Still clean up broken NodeSource so future apt operations don't fail
-      cleanup_stale_nodesource
     else
-      install_node
+      install_node_via_fnm
     fi
     PI_RUNTIME=node
     ;;
   node)
-    if node_version_ok; then
-      log "Using existing Node $(node -v)"
-      cleanup_stale_nodesource
-    else
-      install_node
-    fi
+    cleanup_stale_nodesource
+    if node_version_ok; then log "Using existing Node $(node -v)"
+    else install_node_via_fnm; fi
     ;;
   bun)
     install_bun
@@ -131,8 +140,8 @@ else
   case "$PI_RUNTIME" in
     node)
       log "Installing pi via npm..."
-      # Global npm typically needs root when Node lives in /usr
-      $SUDO npm install -g @mariozechner/pi-coding-agent
+      # When Node came from fnm (owned by root), npm -g writes into the fnm tree — sudo works cleanly
+      $SUDO env PATH="$PATH" npm install -g @mariozechner/pi-coding-agent
       ;;
     bun)
       log "Installing pi via Bun (experimental)..."
@@ -141,12 +150,20 @@ else
   esac
 fi
 
+# If pi was installed inside fnm's tree, the shim isn't on PATH — symlink it
+if [ "$PI_RUNTIME" = "node" ] && [ ! -e /usr/local/bin/pi ]; then
+  pi_path="$FNM_DIR/aliases/default/bin/pi"
+  if [ -e "$pi_path" ]; then
+    $SUDO ln -sfn "$pi_path" /usr/local/bin/pi
+    log "Linked /usr/local/bin/pi -> $pi_path"
+  fi
+fi
+
 # --- Clone or update the config repo ---
 if [ -d "$CONFIG_DIR/.git" ]; then
   log "Updating $CONFIG_DIR"
   git -C "$CONFIG_DIR" pull --ff-only
 elif [ -d "$CONFIG_DIR" ]; then
-  # Directory exists but isn't a git repo — back it up and clone fresh
   bak="$CONFIG_DIR.bak.$(date +%s)"
   warn "$CONFIG_DIR exists but isn't a git repo — moving to $bak"
   mv "$CONFIG_DIR" "$bak"
