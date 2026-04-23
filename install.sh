@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pi config installer — idempotent
-# Default:  installs Node.js LTS via NodeSource (if needed), then pi via npm
+# Default:  uses distro Node via apt (Debian 13+ ships Node 20), falls back to NodeSource if too old
 # Opt-in:   PI_RUNTIME=bun bash -c "..."  — uses Bun instead of Node
 #
 # Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
@@ -16,7 +16,7 @@ log()  { printf '\033[1;34m[pi-config]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[pi-config]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m[pi-config]\033[0m %s\n' "$*" >&2; exit 1; }
 
-# --- Require root on Debian/Ubuntu paths that use apt ---
+# --- Privilege detection ---
 is_root() { [ "$(id -u)" = "0" ]; }
 SUDO=""
 if ! is_root; then
@@ -29,7 +29,26 @@ for bin in git curl; do
   command -v "$bin" >/dev/null 2>&1 || die "Missing dependency: $bin (install with: apt install -y $bin)"
 done
 
-# --- Runtime selection ---
+# --- Clean up broken NodeSource repo left by earlier runs (Debian 13 sqv issue) ---
+cleanup_stale_nodesource() {
+  local ns_list="/etc/apt/sources.list.d/nodesource.list"
+  local ns_key="/etc/apt/keyrings/nodesource.gpg"
+  [ -f "$ns_list" ] || [ -f "$ns_key" ] || return 0
+
+  log "Found existing NodeSource repo, checking if apt can still use it..."
+  local apt_out
+  apt_out=$($SUDO apt-get update 2>&1 || true)
+  if echo "$apt_out" | grep -qE "(Failed to fetch|Err:|error|Warning).*nodesource|nodesource.*(sqv|SHA1|Signing key)"; then
+    warn "NodeSource apt source is failing (commonly Debian 13's sqv policy rejecting SHA-1 certifications). Removing stale entries..."
+    $SUDO rm -f "$ns_list" "$ns_key"
+    $SUDO apt-get update -qq
+    log "NodeSource cleanup complete"
+  else
+    log "NodeSource repo looks healthy, leaving it alone"
+  fi
+}
+
+# --- Runtime selection helpers ---
 node_version_ok() {
   command -v node >/dev/null 2>&1 || return 1
   local major
@@ -52,15 +71,17 @@ install_node_via_apt() {
 
 install_node_via_nodesource() {
   log "Installing Node.js LTS via NodeSource..."
-  warn "NodeSource is known to fail signature checks on Debian 13 (sqv policy rejects SHA-1 certifications). If this errors, use distro Node on Debian 13+ or 'PI_RUNTIME=bun'."
+  warn "NodeSource is known to fail signature checks on Debian 13 (sqv policy rejects SHA-1 certifications). If this errors, use 'PI_RUNTIME=bun' or upgrade to a distro shipping Node >= ${NODE_MIN_MAJOR}."
   curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO -E bash -
   $SUDO apt-get install -y nodejs
+  node_version_ok || die "NodeSource install completed but Node version is still below v${NODE_MIN_MAJOR}"
   log "Installed Node $(node -v), npm $(npm -v)"
 }
 
 install_node() {
+  cleanup_stale_nodesource
   if install_node_via_apt; then return 0; fi
-  warn "Falling back to NodeSource..."
+  warn "Distro Node not suitable; falling back to NodeSource..."
   install_node_via_nodesource
 }
 
@@ -69,7 +90,7 @@ install_bun() {
     log "Bun already installed: $(bun -v)"
     return
   fi
-  command -v unzip >/dev/null 2>&1 || { log "Installing unzip (required by Bun installer)"; $SUDO apt install -y unzip; }
+  command -v unzip >/dev/null 2>&1 || { log "Installing unzip (required by Bun installer)"; $SUDO apt-get install -y unzip; }
   log "Installing Bun..."
   curl -fsSL https://bun.sh/install | bash
   export BUN_INSTALL="$HOME/.bun"
@@ -82,14 +103,20 @@ case "$PI_RUNTIME" in
   auto)
     if node_version_ok; then
       log "Using existing Node $(node -v)"
+      # Still clean up broken NodeSource so future apt operations don't fail
+      cleanup_stale_nodesource
     else
       install_node
     fi
     PI_RUNTIME=node
     ;;
   node)
-    if node_version_ok; then log "Using existing Node $(node -v)"
-    else install_node; fi
+    if node_version_ok; then
+      log "Using existing Node $(node -v)"
+      cleanup_stale_nodesource
+    else
+      install_node
+    fi
     ;;
   bun)
     install_bun
@@ -102,8 +129,15 @@ if command -v pi >/dev/null 2>&1; then
   log "pi already installed: $(pi --version 2>/dev/null || echo '?')"
 else
   case "$PI_RUNTIME" in
-    node) log "Installing pi via npm...";  npm install -g @mariozechner/pi-coding-agent ;;
-    bun)  log "Installing pi via Bun (experimental)..."; bun install -g @mariozechner/pi-coding-agent ;;
+    node)
+      log "Installing pi via npm..."
+      # Global npm typically needs root when Node lives in /usr
+      $SUDO npm install -g @mariozechner/pi-coding-agent
+      ;;
+    bun)
+      log "Installing pi via Bun (experimental)..."
+      bun install -g @mariozechner/pi-coding-agent
+      ;;
   esac
 fi
 
@@ -111,6 +145,13 @@ fi
 if [ -d "$CONFIG_DIR/.git" ]; then
   log "Updating $CONFIG_DIR"
   git -C "$CONFIG_DIR" pull --ff-only
+elif [ -d "$CONFIG_DIR" ]; then
+  # Directory exists but isn't a git repo — back it up and clone fresh
+  bak="$CONFIG_DIR.bak.$(date +%s)"
+  warn "$CONFIG_DIR exists but isn't a git repo — moving to $bak"
+  mv "$CONFIG_DIR" "$bak"
+  log "Cloning $REPO_URL into $CONFIG_DIR"
+  git clone "$REPO_URL" "$CONFIG_DIR"
 else
   log "Cloning $REPO_URL into $CONFIG_DIR"
   git clone "$REPO_URL" "$CONFIG_DIR"
