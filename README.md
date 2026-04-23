@@ -2,7 +2,7 @@
 
 Shared [pi coding agent](https://github.com/badlogic/pi-mono) configuration for a Proxmox host, LXC containers, and workstations. One `models.json`, one source of truth.
 
-The installer bootstraps a current Node.js (via NodeSource), installs pi globally, clones this repo to `~/pi-config`, and symlinks the config into `~/.pi/agent/`. Safe to re-run — it pulls the latest config and re-applies symlinks.
+The installer bootstraps Node.js (preferring distro packages on Debian 13+, falling back to NodeSource if the distro version is too old), installs pi globally, clones this repo to `~/pi-config`, and symlinks the config into `~/.pi/agent/`. Fully idempotent — re-run any time to update config, heal a broken NodeSource repo left by a prior attempt, or add missing symlinks.
 
 ## Installation — inside a fresh Debian/Ubuntu LXC
 
@@ -35,7 +35,7 @@ sudo apt update && sudo apt install -y curl git ca-certificates unzip && PI_RUNT
 
 | Var | Default | Effect |
 |---|---|---|
-| `PI_RUNTIME` | `auto` | `auto` (existing Node ≥20 or install NodeSource) \| `node` \| `bun` |
+| `PI_RUNTIME` | `auto` | `auto` / `node` = use existing Node ≥20 if present, else install via `apt` (distro), else fall back to NodeSource. `bun` = install Bun and use it instead of Node. |
 | `PI_CONFIG_REPO` | this repo | Override the config repo URL |
 | `PI_CONFIG_DIR` | `~/pi-config` | Where to clone the repo |
 | `PI_AGENT_DIR` | `~/.pi/agent` | Where pi looks for its config |
@@ -66,7 +66,13 @@ Edit locally, commit, push. Then on each host:
 ~/pi-config/install.sh      # or: git -C ~/pi-config pull
 ```
 
-Re-running the installer is idempotent — no dependency reinstall if Node/pi are already current. Cron `git -C ~/pi-config pull --ff-only` hourly for hands-free updates.
+Re-running the installer is idempotent:
+- Skips Node/pi installation if already current
+- Auto-detects and removes a broken NodeSource repo (Debian 13 `sqv` signing issue)
+- Backs up any pre-existing non-symlink `models.json` (or `~/pi-config` directory) before replacing
+- Never touches your `auth.json`
+
+Cron `git -C ~/pi-config pull --ff-only` hourly for hands-free updates.
 
 ## Notes
 
