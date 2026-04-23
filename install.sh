@@ -37,11 +37,31 @@ node_version_ok() {
   [ -n "$major" ] && [ "$major" -ge "$NODE_MIN_MAJOR" ]
 }
 
+install_node_via_apt() {
+  log "Installing Node.js + npm via apt (distro packages)..."
+  $SUDO apt-get update -qq
+  if $SUDO apt-get install -y nodejs npm; then
+    if node_version_ok; then
+      log "Installed Node $(node -v), npm $(npm -v)"
+      return 0
+    fi
+    warn "Distro Node is $(node -v 2>/dev/null || echo 'n/a') — need >= v${NODE_MIN_MAJOR}"
+  fi
+  return 1
+}
+
 install_node_via_nodesource() {
   log "Installing Node.js LTS via NodeSource..."
+  warn "NodeSource is known to fail signature checks on Debian 13 (sqv policy rejects SHA-1 certifications). If this errors, use distro Node on Debian 13+ or 'PI_RUNTIME=bun'."
   curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO -E bash -
-  $SUDO apt install -y nodejs
+  $SUDO apt-get install -y nodejs
   log "Installed Node $(node -v), npm $(npm -v)"
+}
+
+install_node() {
+  if install_node_via_apt; then return 0; fi
+  warn "Falling back to NodeSource..."
+  install_node_via_nodesource
 }
 
 install_bun() {
@@ -62,15 +82,14 @@ case "$PI_RUNTIME" in
   auto)
     if node_version_ok; then
       log "Using existing Node $(node -v)"
-      PI_RUNTIME=node
     else
-      install_node_via_nodesource
-      PI_RUNTIME=node
+      install_node
     fi
+    PI_RUNTIME=node
     ;;
   node)
     if node_version_ok; then log "Using existing Node $(node -v)"
-    else install_node_via_nodesource; fi
+    else install_node; fi
     ;;
   bun)
     install_bun

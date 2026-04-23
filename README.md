@@ -9,15 +9,15 @@ The installer bootstraps a current Node.js (via NodeSource), installs pi globall
 ### Quick Install
 
 ```bash
-apt update && apt install -y curl git ca-certificates && bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
+sudo apt update && sudo apt install -y curl git ca-certificates && bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
 ```
 
-This single command installs the three apt prereqs and runs the installer. Works on fresh Debian 13 / Ubuntu.
+This single command installs the three apt prereqs and runs the installer. Works on fresh Debian 13 / Ubuntu. Drop the `sudo` if you're already root.
 
 ### Review First (Recommended)
 
 ```bash
-apt update && apt install -y curl git ca-certificates
+sudo apt update && sudo apt install -y curl git ca-certificates
 curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh -o install.sh
 less install.sh
 bash install.sh
@@ -28,7 +28,7 @@ bash install.sh
 pi is published to npm and `bun install -g` works, but Bun's Node-API coverage isn't complete — some pi extensions may misbehave. Core CLI works.
 
 ```bash
-apt update && apt install -y curl git ca-certificates unzip && PI_RUNTIME=bun bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
+sudo apt update && sudo apt install -y curl git ca-certificates unzip && PI_RUNTIME=bun bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
 ```
 
 ## Environment variables
