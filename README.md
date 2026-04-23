@@ -1,30 +1,41 @@
-# pi config
+# pi
 
-Shared configuration for [pi coding agent](https://github.com/badlogic/pi-mono) across a Proxmox host, LXC containers, and workstations. One `models.json`, one place to update.
+Shared [pi coding agent](https://github.com/badlogic/pi-mono) configuration for a Proxmox host, LXC containers, and workstations. One `models.json`, one source of truth.
 
-## One-liner install (Debian/Ubuntu, fresh host)
+The installer bootstraps a current Node.js (via NodeSource), installs pi globally, clones this repo to `~/pi-config`, and symlinks the config into `~/.pi/agent/`. Safe to re-run — it pulls the latest config and re-applies symlinks.
 
-The installer bootstraps a current Node.js for you (via NodeSource), installs pi globally, clones this repo, and symlinks the config into `~/.pi/agent/`. Safe to re-run.
+## Installation — inside a fresh Debian/Ubuntu LXC
 
-```bash
-apt update && apt install -y curl git ca-certificates \
-  && bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
-```
-
-### With Bun instead of Node (experimental)
-
-pi is published to npm and `bun install -g` works, but Bun's Node-API coverage isn't complete — some pi extensions may misbehave. For the core CLI it works.
+### Quick Install
 
 ```bash
-apt update && apt install -y curl git ca-certificates unzip \
-  && PI_RUNTIME=bun bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
+apt update && apt install -y curl git ca-certificates && bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
 ```
 
-### Environment variables
+This single command installs the three apt prereqs and runs the installer. Works on fresh Debian 13 / Ubuntu.
+
+### Review First (Recommended)
+
+```bash
+apt update && apt install -y curl git ca-certificates
+curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh -o install.sh
+less install.sh
+bash install.sh
+```
+
+### Use Bun instead of Node (experimental)
+
+pi is published to npm and `bun install -g` works, but Bun's Node-API coverage isn't complete — some pi extensions may misbehave. Core CLI works.
+
+```bash
+apt update && apt install -y curl git ca-certificates unzip && PI_RUNTIME=bun bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
+```
+
+## Environment variables
 
 | Var | Default | Effect |
 |---|---|---|
-| `PI_RUNTIME` | `auto` | `auto` (use existing Node ≥20 or install NodeSource), `node` (force NodeSource path), `bun` (install Bun) |
+| `PI_RUNTIME` | `auto` | `auto` (existing Node ≥20 or install NodeSource) \| `node` \| `bun` |
 | `PI_CONFIG_REPO` | this repo | Override the config repo URL |
 | `PI_CONFIG_DIR` | `~/pi-config` | Where to clone the repo |
 | `PI_AGENT_DIR` | `~/.pi/agent` | Where pi looks for its config |
@@ -43,25 +54,23 @@ Any existing non-symlink file is backed up to `<file>.bak.<timestamp>` before be
 
 ## Secrets — never in this repo
 
-API keys live in `~/.pi/agent/auth.json` on each host (`0600` permissions). See [`auth.json.example`](./auth.json.example) for the format.
+API keys live in `~/.pi/agent/auth.json` on each host (`0600`). See [`auth.json.example`](./auth.json.example) for the format.
 
-The install script creates an empty `auth.json` on first run. Add your keys per host after install.
+The installer creates an empty `auth.json` on first run. Add your keys per host after install.
 
-## Updating config across all hosts
+## Updating config across hosts
 
-Edit `models.json` (or any other file) locally, commit + push. Then on each host:
+Edit locally, commit, push. Then on each host:
 
 ```bash
 ~/pi-config/install.sh      # or: git -C ~/pi-config pull
 ```
 
-Re-running the script is idempotent — it pulls the repo and re-applies symlinks. No dependency reinstall if Node/pi are already current.
-
-Cron an hourly `git -C ~/pi-config pull --ff-only` if you want it hands-free.
+Re-running the installer is idempotent — no dependency reinstall if Node/pi are already current. Cron `git -C ~/pi-config pull --ff-only` hourly for hands-free updates.
 
 ## Notes
 
-- `baseUrl` entries currently use a static LAN IP (`192.168.0.10`). You can replace with a hostname (e.g. `http://llm.lan:1234/v1`) if you prefer — via router DNS or mDNS.
-- Providers listed here (`lm-studio`, `llama-swap`) are plain-HTTP LAN services, so their `apiKey` values are placeholders — not real secrets.
-- **Windows hosts**: the installer is Linux-only. On Windows, clone manually and either use `mklink /J` to junction `%USERPROFILE%\.pi\agent\models.json` onto the clone, or schedule a periodic `git pull`.
-- **Running as non-root**: the script will call `sudo` for apt steps if it's available. For a fresh LXC running as root, no sudo is needed.
+- `baseUrl` entries currently use the static LAN IP `192.168.0.10`. Replace with a hostname if you prefer (`http://llm.lan:1234/v1`) — add via router DNS or mDNS.
+- Bundled providers (`lm-studio`, `llama-swap`) are plain-HTTP LAN services; their `apiKey` values are placeholders, not real secrets.
+- **Windows hosts**: the installer is Linux-only. Clone manually, then either `mklink /J` a junction or schedule a periodic `git pull`.
+- **Non-root**: the script invokes `sudo` for apt steps if available. Fresh LXC as root needs no sudo.
