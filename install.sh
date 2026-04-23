@@ -81,16 +81,18 @@ install_fnm_binary() {
 install_node_via_fnm() {
   install_fnm_binary
   $SUDO mkdir -p "$FNM_DIR"
-  log "Installing latest Node.js Current via fnm into $FNM_DIR..."
-  $SUDO env FNM_DIR="$FNM_DIR" fnm install latest
 
-  # Determine which version was just installed (pick the highest via sort -V)
-  local installed
-  installed=$($SUDO env FNM_DIR="$FNM_DIR" fnm list 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
-  [ -n "$installed" ] || die "Could not determine installed Node version from 'fnm list'"
+  log "Querying nodejs.org for latest Node.js Current version..."
+  local latest_version
+  latest_version=$(curl -fsSL https://nodejs.org/dist/index.json | grep -oE '"version":"v[0-9]+\.[0-9]+\.[0-9]+"' | head -1 | cut -d'"' -f4)
+  [ -n "$latest_version" ] || die "Could not determine latest Node version from nodejs.org/dist/index.json"
+  log "Latest Node.js Current: $latest_version"
 
-  log "Setting fnm default alias -> $installed"
-  $SUDO env FNM_DIR="$FNM_DIR" fnm alias default "$installed"
+  log "Installing $latest_version via fnm into $FNM_DIR..."
+  $SUDO env FNM_DIR="$FNM_DIR" fnm install "$latest_version"
+
+  log "Setting fnm default alias -> $latest_version"
+  $SUDO env FNM_DIR="$FNM_DIR" fnm alias default "$latest_version"
 
   # fnm's 'default' alias is a symlink to the installation root; bin/ is inside
   local default_bin="$FNM_DIR/aliases/default/bin"
@@ -149,9 +151,12 @@ case "$PI_RUNTIME" in
 esac
 
 # --- Install pi ---
-if command -v pi >/dev/null 2>&1; then
-  log "pi already installed: $(pi --version 2>/dev/null || echo '?')"
+# Actually run pi to test it, not just check symlink — runtime switches leave stale symlinks
+if pi --version >/dev/null 2>&1; then
+  log "pi already installed: $(pi --version 2>/dev/null)"
 else
+  # Remove any stale symlink pointing at a non-existent binary
+  [ -L /usr/local/bin/pi ] && [ ! -e /usr/local/bin/pi ] && $SUDO rm -f /usr/local/bin/pi
   case "$PI_RUNTIME" in
     node)
       log "Installing pi via npm..."
