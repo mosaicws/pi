@@ -2,7 +2,7 @@
 
 Shared [pi coding agent](https://github.com/badlogic/pi-mono) configuration for a Proxmox host, LXC containers, and workstations. One `models.json`, one source of truth.
 
-The installer bootstraps Node.js via [`fnm`](https://github.com/Schniz/fnm) (single Rust binary, ~5 MB, zero apt bloat), installs pi globally, clones this repo to `~/pi-config`, and symlinks the config into `~/.pi/agent/`. Fully idempotent — re-run any time to update config, heal a broken NodeSource repo from a prior attempt, or add missing symlinks.
+The installer bootstraps Node.js (latest Current release) via [`fnm`](https://github.com/Schniz/fnm) — single Rust binary, ~5 MB, zero apt bloat. If run interactively it prompts to choose between Node and Bun. Then it installs pi globally, clones this repo to `~/pi-config`, and symlinks the config into `~/.pi/agent/`. Fully idempotent — re-run any time to update config, heal a broken NodeSource repo from a prior attempt, or add missing symlinks.
 
 ## Installation — inside a fresh Debian/Ubuntu LXC
 
@@ -35,7 +35,7 @@ sudo apt update && sudo apt install -y curl git ca-certificates unzip && PI_RUNT
 
 | Var | Default | Effect |
 |---|---|---|
-| `PI_RUNTIME` | `auto` | `auto` / `node` = use existing Node ≥22 if present, else install latest LTS via fnm. `bun` = install Bun and use it instead of Node. |
+| `PI_RUNTIME` | `auto` | `auto` = prompt interactively (or default to node if no TTY). `node` = use existing Node ≥25 if present, else install latest Current via fnm. `bun` = install Bun and use it instead of Node. |
 | `FNM_DIR` | `/usr/local/fnm` | Where fnm stores its Node versions |
 | `PI_CONFIG_REPO` | this repo | Override the config repo URL |
 | `PI_CONFIG_DIR` | `~/pi-config` | Where to clone the repo |

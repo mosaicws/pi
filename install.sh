@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # pi config installer — idempotent
-# Default:  installs Node.js LTS via fnm (https://github.com/Schniz/fnm) — clean, no apt bloat
+# Default:  installs Node.js Current via fnm (https://github.com/Schniz/fnm) — clean, no apt bloat
 # Opt-in:   PI_RUNTIME=bun bash -c "..."  — uses Bun instead of Node
+#
+# If run interactively (TTY), prompts for Node vs Bun; otherwise defaults to Node.
 #
 # Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
 set -euo pipefail
@@ -10,7 +12,7 @@ REPO_URL="${PI_CONFIG_REPO:-https://github.com/mosaicws/pi.git}"
 CONFIG_DIR="${PI_CONFIG_DIR:-$HOME/pi-config}"
 PI_DIR="${PI_AGENT_DIR:-$HOME/.pi/agent}"
 PI_RUNTIME="${PI_RUNTIME:-auto}"   # auto | node | bun
-NODE_MIN_MAJOR=22
+NODE_MIN_MAJOR=25
 FNM_DIR="${FNM_DIR:-/usr/local/fnm}"
 
 log()  { printf '\033[1;34m[pi-config]\033[0m %s\n' "$*"; }
@@ -79,8 +81,8 @@ install_fnm_binary() {
 install_node_via_fnm() {
   install_fnm_binary
   $SUDO mkdir -p "$FNM_DIR"
-  log "Installing latest Node.js LTS via fnm into $FNM_DIR..."
-  $SUDO env FNM_DIR="$FNM_DIR" fnm install --lts
+  log "Installing latest Node.js Current via fnm into $FNM_DIR..."
+  $SUDO env FNM_DIR="$FNM_DIR" fnm install latest
 
   # Determine which version was just installed (pick the highest via sort -V)
   local installed
@@ -118,17 +120,23 @@ install_bun() {
   log "Installed Bun $(bun -v)"
 }
 
+# --- Interactive runtime prompt when stdin is a TTY and no explicit PI_RUNTIME ---
+if [ "$PI_RUNTIME" = "auto" ] && [ -t 0 ]; then
+  printf '\n'
+  printf 'Select JavaScript runtime for pi:\n'
+  printf '  [n] Node.js (default) — recommended, full extension support\n'
+  printf '  [b] Bun — experimental, some pi extensions may misbehave\n'
+  read -r -p "Choice [N/b]: " _rt_choice || _rt_choice=""
+  case "${_rt_choice,,}" in
+    b|bun) PI_RUNTIME=bun ;;
+    *)     PI_RUNTIME=node ;;
+  esac
+fi
+# Non-TTY fallback: default auto -> node
+[ "$PI_RUNTIME" = "auto" ] && PI_RUNTIME=node
+
 # --- Runtime selection ---
 case "$PI_RUNTIME" in
-  auto)
-    cleanup_stale_nodesource
-    if node_version_ok; then
-      log "Using existing Node $(node -v)"
-    else
-      install_node_via_fnm
-    fi
-    PI_RUNTIME=node
-    ;;
   node)
     cleanup_stale_nodesource
     if node_version_ok; then log "Using existing Node $(node -v)"
@@ -137,7 +145,7 @@ case "$PI_RUNTIME" in
   bun)
     install_bun
     ;;
-  *) die "PI_RUNTIME must be 'auto', 'node', or 'bun' (got: $PI_RUNTIME)" ;;
+  *) die "PI_RUNTIME must be 'node' or 'bun' (got: $PI_RUNTIME)" ;;
 esac
 
 # --- Install pi ---
