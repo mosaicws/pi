@@ -35,7 +35,7 @@ sudo apt update && sudo apt install -y curl git ca-certificates unzip && PI_RUNT
 
 | Var | Default | Effect |
 |---|---|---|
-| `PI_RUNTIME` | `auto` | `auto` / `node` = use existing Node ≥20 if present, else install via fnm. `bun` = install Bun and use it instead of Node. |
+| `PI_RUNTIME` | `auto` | `auto` / `node` = use existing Node ≥22 if present, else install latest LTS via fnm. `bun` = install Bun and use it instead of Node. |
 | `FNM_DIR` | `/usr/local/fnm` | Where fnm stores its Node versions |
 | `PI_CONFIG_REPO` | this repo | Override the config repo URL |
 | `PI_CONFIG_DIR` | `~/pi-config` | Where to clone the repo |

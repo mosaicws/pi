@@ -10,7 +10,7 @@ REPO_URL="${PI_CONFIG_REPO:-https://github.com/mosaicws/pi.git}"
 CONFIG_DIR="${PI_CONFIG_DIR:-$HOME/pi-config}"
 PI_DIR="${PI_AGENT_DIR:-$HOME/.pi/agent}"
 PI_RUNTIME="${PI_RUNTIME:-auto}"   # auto | node | bun
-NODE_MIN_MAJOR=20
+NODE_MIN_MAJOR=22
 FNM_DIR="${FNM_DIR:-/usr/local/fnm}"
 
 log()  { printf '\033[1;34m[pi-config]\033[0m %s\n' "$*"; }
@@ -79,9 +79,16 @@ install_fnm_binary() {
 install_node_via_fnm() {
   install_fnm_binary
   $SUDO mkdir -p "$FNM_DIR"
-  log "Installing Node.js v${NODE_MIN_MAJOR} LTS via fnm into $FNM_DIR..."
-  $SUDO env FNM_DIR="$FNM_DIR" fnm install "$NODE_MIN_MAJOR"
-  $SUDO env FNM_DIR="$FNM_DIR" fnm alias default "$NODE_MIN_MAJOR"
+  log "Installing latest Node.js LTS via fnm into $FNM_DIR..."
+  $SUDO env FNM_DIR="$FNM_DIR" fnm install --lts
+
+  # Determine which version was just installed (pick the highest via sort -V)
+  local installed
+  installed=$($SUDO env FNM_DIR="$FNM_DIR" fnm list 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+  [ -n "$installed" ] || die "Could not determine installed Node version from 'fnm list'"
+
+  log "Setting fnm default alias -> $installed"
+  $SUDO env FNM_DIR="$FNM_DIR" fnm alias default "$installed"
 
   # fnm's 'default' alias is a symlink to the installation root; bin/ is inside
   local default_bin="$FNM_DIR/aliases/default/bin"
