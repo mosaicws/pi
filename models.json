@@ -1,0 +1,184 @@
+{
+  "providers": {
+    "lm-studio": {
+      "baseUrl": "http://192.168.0.10:1234/v1",
+      "api": "openai-completions",
+      "apiKey": "lm-studio",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
+      },
+      "models": [
+        {
+          "id": "qwen_qwen3.6-35b-a3b",
+          "name": "Qwen3.6 35B A3B (LM Studio)"
+        },
+        {
+          "id": "google_gemma-4-26b-a4b-it",
+          "name": "Gemma 4 26B A4B it (LM Studio)"
+        },
+        {
+          "id": "qwen_qwen3.5-27b@iq2_m",
+          "name": "Qwen3.5 27B IQ2_M (LM Studio)"
+        }
+      ]
+    },
+
+    "llama-swap": {
+      "baseUrl": "http://192.168.0.10:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "sk-no-key-required",
+      "compat": {
+        "supportsDeveloperRole": true,
+        "supportsReasoningEffort": true,
+        "thinkingFormat": "qwen-chat-template"
+      },
+      "models": [
+        {
+          "id": "qwen_qwen3.6-35b-a3b",
+          "name": "Qwen3.6 35B A3B — vision",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "contextWindow": 65536,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen_qwen3.6-35b-a3b-128k",
+          "name": "Qwen3.6 35B A3B — vision 128K",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen_qwen3.6-35b-a3b-text",
+          "name": "Qwen3.6 35B A3B — text-only (fastest)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen_qwen3.6-35b-a3b-heretic",
+          "name": "Qwen3.6 35B A3B Heretic — text-only",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen_qwen3.6-35b-a3b-heretic-128k",
+          "name": "Qwen3.6 35B A3B Heretic — text-only 128K",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen_qwen3.6-35b-a3b-text-128k-udq4xl",
+          "name": "Qwen3.6 35B A3B — text-only 128K (Unsloth UD-Q4_K_XL)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen_qwen3.6-35b-a3b-text-128k",
+          "name": "Qwen3.6 35B A3B — text-only 128K (tuning)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "google_gemma-4-26b-a4b-it",
+          "name": "Gemma 4 26B A4B it — vision",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 32768,
+          "maxTokens": 8192
+        },
+        {
+          "id": "google_gemma-4-26b-a4b-it-text",
+          "name": "Gemma 4 26B A4B it — text-only (fastest)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 8192
+        },
+        {
+          "id": "google_gemma-4-31b-it",
+          "name": "Gemma 4 31B dense it (llama-swap)",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 16384,
+          "maxTokens": 4096
+        },
+        {
+          "id": "qwen_qwen3.6-27b-iq4nl",
+          "name": "Qwen3.6 27B dense IQ4_NL (llama-swap, fastest 27B)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 16384,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen_qwen3.6-27b-q4km",
+          "name": "Qwen3.6 27B dense Q4_K_M (llama-swap, baseline)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 16384,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen_qwen3.6-27b-q4km-spec",
+          "name": "Qwen3.6 27B dense Q4_K_M + speculative (slower than IQ4_NL)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 16384,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen_qwen3.6-27b-q4km-spec-64k",
+          "name": "Qwen3.6 27B dense Q4_K_M + speculative 64K",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen_qwen3.6-27b-udiq2xxs-64k",
+          "name": "Qwen3.6 27B dense UD-IQ2_XXS 64K (fully on GPU)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen_qwen3.6-27b-udiq2xxs-128k",
+          "name": "Qwen3.6 27B dense UD-IQ2_XXS 128K (slow — long-ctx only)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen_qwen3.6-27b-udiq2xxs-96k",
+          "name": "Qwen3.6 27B dense UD-IQ2_XXS 96K",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 98304,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen_qwen3.5-9b",
+          "name": "Qwen3.5 9B (llama-swap)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 8192
+        }
+      ]
+    }
+  }
+}

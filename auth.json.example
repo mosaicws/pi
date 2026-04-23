@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy to ~/.pi/agent/auth.json and fill in your keys. Each provider key supports literal, env-var-name, or shell-command formats. Remove this comment line once edited.",
+
+  "anthropic": { "type": "api_key", "key": "ANTHROPIC_API_KEY" },
+  "openai":    { "type": "api_key", "key": "OPENAI_API_KEY" },
+  "google":    { "type": "api_key", "key": "GEMINI_API_KEY" },
+
+  "_1password_example": { "type": "api_key", "key": "!op read 'op://vault/anthropic/key'" },
+  "_literal_example":   { "type": "api_key", "key": "sk-ant-literal-key-here" }
+}
