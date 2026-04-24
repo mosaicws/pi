@@ -3,6 +3,9 @@ auth.json
 *.bak
 *.bak.*
 
+# Local-only working notes
+HANDOVER.md
+
 # Local overrides
 settings.local.json
 .env
