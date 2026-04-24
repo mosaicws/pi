@@ -10,11 +10,11 @@
       },
       "models": [
         {
-          "id": "qwen_qwen3.6-35b-a3b",
+          "id": "qwen3.6-35b-a3b@q4_k_m",
           "name": "Qwen3.6 35B A3B (LM Studio)"
         },
         {
-          "id": "qwen_qwen3.5-27b@iq2_m",
+          "id": "qwen3.5-27b@iq2_m",
           "name": "Qwen3.5 27B IQ2_M (LM Studio)"
         }
       ]
@@ -31,7 +31,7 @@
       },
       "models": [
         {
-          "id": "qwen_qwen3.6-35b-a3b",
+          "id": "qwen3.6-35b-a3b@q4_k_m",
           "name": "Qwen3.6 35B A3B — vision",
           "reasoning": true,
           "input": ["text", "image"],
@@ -39,7 +39,7 @@
           "maxTokens": 16384
         },
         {
-          "id": "qwen_qwen3.6-35b-a3b-128k",
+          "id": "qwen3.6-35b-a3b@q4_k_m-128k",
           "name": "Qwen3.6 35B A3B — vision 128K",
           "reasoning": true,
           "input": ["text", "image"],
@@ -47,7 +47,7 @@
           "maxTokens": 16384
         },
         {
-          "id": "qwen_qwen3.6-35b-a3b-text",
+          "id": "qwen3.6-35b-a3b-text@q4_k_m",
           "name": "Qwen3.6 35B A3B — text-only (fastest)",
           "reasoning": true,
           "input": ["text"],
@@ -55,7 +55,7 @@
           "maxTokens": 16384
         },
         {
-          "id": "qwen_qwen3.6-35b-a3b-heretic",
+          "id": "qwen3.6-35b-a3b-heretic@q4_k_m",
           "name": "Qwen3.6 35B A3B Heretic — text-only",
           "reasoning": true,
           "input": ["text"],
@@ -63,7 +63,7 @@
           "maxTokens": 16384
         },
         {
-          "id": "qwen_qwen3.6-35b-a3b-heretic-128k",
+          "id": "qwen3.6-35b-a3b-heretic@q4_k_m-128k",
           "name": "Qwen3.6 35B A3B Heretic — text-only 128K",
           "reasoning": true,
           "input": ["text"],
@@ -71,7 +71,7 @@
           "maxTokens": 16384
         },
         {
-          "id": "qwen_qwen3.6-35b-a3b-text-128k-udq4xl",
+          "id": "qwen3.6-35b-a3b-text@ud-q4_k_xl-128k",
           "name": "Qwen3.6 35B A3B — text-only 128K (Unsloth UD-Q4_K_XL)",
           "reasoning": true,
           "input": ["text"],
@@ -79,7 +79,7 @@
           "maxTokens": 16384
         },
         {
-          "id": "qwen_qwen3.6-35b-a3b-text-128k",
+          "id": "qwen3.6-35b-a3b-text@q4_k_m-128k",
           "name": "Qwen3.6 35B A3B — text-only 128K (tuning)",
           "reasoning": true,
           "input": ["text"],
@@ -87,7 +87,7 @@
           "maxTokens": 16384
         },
         {
-          "id": "google_gemma-4-26b-a4b-it",
+          "id": "gemma-4-26b-a4b-it@q4_k_xl",
           "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 32K",
           "reasoning": false,
           "input": ["text", "image"],
@@ -95,7 +95,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-26b-a4b-it-128k",
+          "id": "gemma-4-26b-a4b-it@q4_k_xl-128k",
           "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 128K",
           "reasoning": false,
           "input": ["text", "image"],
@@ -103,7 +103,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-26b-a4b-it-text",
+          "id": "gemma-4-26b-a4b-it-text@q4_k_xl",
           "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 32K (fastest)",
           "reasoning": false,
           "input": ["text"],
@@ -111,7 +111,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-26b-a4b-it-text-128k",
+          "id": "gemma-4-26b-a4b-it-text@q4_k_xl-128k",
           "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 128K",
           "reasoning": false,
           "input": ["text"],
@@ -119,7 +119,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-26b-a4b-it-iq4",
+          "id": "gemma-4-26b-a4b-it@iq4_nl_xl",
           "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 32K (fastest vision)",
           "reasoning": false,
           "input": ["text", "image"],
@@ -127,7 +127,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-26b-a4b-it-iq4-128k",
+          "id": "gemma-4-26b-a4b-it@iq4_nl_xl-128k",
           "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 128K",
           "reasoning": false,
           "input": ["text", "image"],
@@ -135,7 +135,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-26b-a4b-it-text-iq4",
+          "id": "gemma-4-26b-a4b-it-text@iq4_nl_xl",
           "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — text-only 32K (fastest: 60 t/s)",
           "reasoning": false,
           "input": ["text"],
@@ -143,7 +143,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-26b-a4b-it-text-iq4-128k",
+          "id": "gemma-4-26b-a4b-it-text@iq4_nl_xl-128k",
           "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — text-only 128K (56 t/s)",
           "reasoning": false,
           "input": ["text"],
@@ -151,7 +151,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.6-27b-iq4nl",
+          "id": "qwen3.6-27b@iq4_nl",
           "name": "Qwen3.6 27B dense IQ4_NL (llama-swap, fastest 27B)",
           "reasoning": true,
           "input": ["text"],
@@ -159,7 +159,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.6-27b-q4km",
+          "id": "qwen3.6-27b@q4_k_m",
           "name": "Qwen3.6 27B dense Q4_K_M (llama-swap, baseline)",
           "reasoning": true,
           "input": ["text"],
@@ -167,7 +167,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.6-27b-q4km-spec",
+          "id": "qwen3.6-27b@q4_k_m+spec",
           "name": "Qwen3.6 27B dense Q4_K_M + speculative (slower than IQ4_NL)",
           "reasoning": true,
           "input": ["text"],
@@ -175,7 +175,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.6-27b-q4km-spec-64k",
+          "id": "qwen3.6-27b@q4_k_m+spec-64k",
           "name": "Qwen3.6 27B dense Q4_K_M + speculative 64K",
           "reasoning": true,
           "input": ["text"],
@@ -183,7 +183,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.6-27b-udiq2xxs-64k",
+          "id": "qwen3.6-27b@ud-iq2_xxs-64k",
           "name": "Qwen3.6 27B dense UD-IQ2_XXS 64K (fully on GPU)",
           "reasoning": true,
           "input": ["text"],
@@ -191,7 +191,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.6-27b-udiq2xxs-128k",
+          "id": "qwen3.6-27b@ud-iq2_xxs-128k",
           "name": "Qwen3.6 27B dense UD-IQ2_XXS 128K (slow — long-ctx only)",
           "reasoning": true,
           "input": ["text"],
@@ -199,7 +199,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.6-27b-udiq2xxs-96k",
+          "id": "qwen3.6-27b@ud-iq2_xxs-96k",
           "name": "Qwen3.6 27B dense UD-IQ2_XXS 96K",
           "reasoning": true,
           "input": ["text"],
@@ -207,7 +207,7 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen_qwen3.5-9b",
+          "id": "qwen3.5-9b@q4_k_m",
           "name": "Qwen3.5 9B (llama-swap)",
           "reasoning": true,
           "input": ["text"],
