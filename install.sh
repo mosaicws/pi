@@ -39,6 +39,10 @@ if ! is_root; then
   else warn "Not running as root and no sudo found — installs will fail"; fi
 fi
 
+# Try "$@" as-is, fall back to $SUDO on failure. For edits on user-owned
+# files where the script may or may not already have the right uid.
+as_owner() { "$@" 2>/dev/null || $SUDO "$@"; }
+
 # --- Prerequisites ---
 for bin in git curl; do
   command -v "$bin" >/dev/null 2>&1 || die "Missing dependency: $bin (install with: apt install -y $bin)"
@@ -221,19 +225,23 @@ cleanup_legacy_bun_user_state() {
   local home rc bak cleaned=0
   home=$(invoking_home)
   [ -n "$home" ] && [ -d "$home" ] || return 0
-  [ -d "$home/.bun" ] || return 0
+
+  local legacy_root="$home/.bun"
+  local legacy_bun="$legacy_root/bin/bun"
+  local legacy_shim="$legacy_root/bin/pi"
+  [ -d "$legacy_root" ] || return 0
 
   # (a) Deregister pi from the legacy Bun global tree so bun's own metadata
   # is consistent. Run as the home's owner so the tree's permissions stay
   # user-owned; fall back to a best-effort if that's not possible.
-  if [ -x "$home/.bun/bin/bun" ]; then
+  if [ -x "$legacy_bun" ]; then
     local legacy_owner
-    legacy_owner=$(stat -c '%U' "$home/.bun" 2>/dev/null || echo "")
+    legacy_owner=$(stat -c '%U' "$legacy_root" 2>/dev/null || echo "")
     if [ -n "$legacy_owner" ] && [ "$legacy_owner" != "$(id -un)" ] && command -v runuser >/dev/null 2>&1; then
-      $SUDO runuser -u "$legacy_owner" -- env BUN_INSTALL="$home/.bun" \
-        "$home/.bun/bin/bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+      $SUDO runuser -u "$legacy_owner" -- env BUN_INSTALL="$legacy_root" \
+        "$legacy_bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
     else
-      env BUN_INSTALL="$home/.bun" "$home/.bun/bin/bun" \
+      env BUN_INSTALL="$legacy_root" "$legacy_bun" \
         remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
     fi
   fi
@@ -241,46 +249,44 @@ cleanup_legacy_bun_user_state() {
   # (b) Belt-and-braces shim removal. bun remove -g usually drops the shim but
   # has been observed to miss it on partial/legacy installs. The shim is the
   # file that actually shadows pi in PATH, so this is the load-bearing line.
-  if [ -e "$home/.bun/bin/pi" ]; then
-    rm -f "$home/.bun/bin/pi" 2>/dev/null || $SUDO rm -f "$home/.bun/bin/pi"
-    log "Removed legacy per-user pi shim: $home/.bun/bin/pi"
+  if [ -e "$legacy_shim" ]; then
+    as_owner rm -f "$legacy_shim"
+    log "Removed legacy per-user pi shim: $legacy_shim"
     cleaned=1
   fi
 
   # (c) Strip Bun's canonical PATH injection from shell rc files. Matches the
   # exact lines the upstream installer writes — we do NOT touch any other
-  # references to ~/.bun the user may have added themselves.
+  # references to ~/.bun the user may have added themselves. Three lines,
+  # each matched exactly so a non-canonical layout (e.g. blank line between
+  # them) still gets cleaned.
+  local sed_script='
+    /^# bun$/d
+    /^export BUN_INSTALL="\$HOME\/\.bun"$/d
+    /^export PATH="\$BUN_INSTALL\/bin:\$PATH"$/d
+  '
   for rc in "$home/.bashrc" "$home/.zshrc" "$home/.profile"; do
     [ -f "$rc" ] || continue
     grep -qE '^export BUN_INSTALL="\$HOME/\.bun"$' "$rc" 2>/dev/null || continue
     bak="$rc.bak.pi-install.$(date +%s)"
-    cp -p "$rc" "$bak" 2>/dev/null || $SUDO cp -p "$rc" "$bak"
-    # Three lines, each matched exactly. Handled independently so a non-canonical
-    # layout (e.g. blank line between them) still gets cleaned.
-    sed -i -E '
-      /^# bun$/d
-      /^export BUN_INSTALL="\$HOME\/\.bun"$/d
-      /^export PATH="\$BUN_INSTALL\/bin:\$PATH"$/d
-    ' "$rc" 2>/dev/null || $SUDO sed -i -E '
-      /^# bun$/d
-      /^export BUN_INSTALL="\$HOME\/\.bun"$/d
-      /^export PATH="\$BUN_INSTALL\/bin:\$PATH"$/d
-    ' "$rc"
+    as_owner cp -p "$rc" "$bak"
+    as_owner sed -i -E "$sed_script" "$rc"
     warn "Removed Bun's auto-injected PATH lines from $rc (backup: $bak)"
     cleaned=1
   done
 
   if [ "$cleaned" = 1 ]; then
     log "Open a new shell (or run: hash -r) to pick up the cleanup"
-    log "  (the $home/.bun tree itself is left intact in case other tools use it)"
+    log "  (the $legacy_root tree itself is left intact in case other tools use it)"
   fi
 }
 
-# --- Detect which runtime owns /usr/local/bin/pi (readlink -f = resolve all symlinks) ---
+# readlink -f resolves the whole symlink chain; returns empty on dangling.
+pi_symlink_target() { readlink -f /usr/local/bin/pi 2>/dev/null || true; }
+
+# --- Detect which runtime owns /usr/local/bin/pi ---
 detect_current_runtime() {
-  local target
-  target=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
-  case "$target" in
+  case "$(pi_symlink_target)" in
     "$FNM_DIR"/*)    echo node ;;
     "$BUN_ROOT"/*)   echo bun ;;
     */.bun/*)        echo bun ;;  # legacy per-user Bun install (pre-system-wide script)
@@ -303,8 +309,10 @@ uninstall_pi_from() {
       if [ -x "$BUN_ROOT/bin/bun" ]; then
         $SUDO env BUN_INSTALL="$BUN_ROOT" "$BUN_ROOT/bin/bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
       fi
-      if [ -x "$HOME/.bun/bin/bun" ]; then
-        "$HOME/.bun/bin/bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+      local _legacy_home; _legacy_home=$(invoking_home)
+      if [ -n "$_legacy_home" ] && [ -x "$_legacy_home/.bun/bin/bun" ]; then
+        env BUN_INSTALL="$_legacy_home/.bun" "$_legacy_home/.bun/bin/bun" \
+          remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
       fi
       ;;
   esac
@@ -370,15 +378,13 @@ if [ -n "$current_pi_runtime" ] && [ "$current_pi_runtime" != "$PI_RUNTIME" ]; t
   log "Switching pi runtime: $current_pi_runtime -> $PI_RUNTIME"
   log "  (configs in $PI_DIR and $CONFIG_DIR are preserved)"
   uninstall_pi_from "$current_pi_runtime"
-  current_pi_runtime=""
 fi
 
 # If /usr/local/bin/pi currently points into a legacy per-user Bun tree
 # ($HOME/.bun/...), drop it now so the fresh install below can relink cleanly.
 # The comprehensive per-user cleanup (shim, registration, rc pollution) runs
 # after the install completes via cleanup_legacy_bun_user_state.
-_pi_target=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
-case "$_pi_target" in
+case "$(pi_symlink_target)" in
   */.bun/*)  $SUDO rm -f /usr/local/bin/pi ;;
 esac
 
@@ -409,7 +415,7 @@ log "Linked /usr/local/bin/pi -> $pi_src"
 # Drift guard: confirm /usr/local/bin/pi actually resolves into the runtime we picked.
 # Catches the class of bug where a parallel install (e.g. sudo npm while bun owned
 # the symlink) leaves pi served from the wrong tree.
-_final_target=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
+_final_target=$(pi_symlink_target)
 case "$PI_RUNTIME" in
   node) _expected_prefix="$FNM_DIR" ;;
   bun)  _expected_prefix="$BUN_ROOT" ;;
