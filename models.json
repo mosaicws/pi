@@ -39,6 +39,14 @@
           "maxTokens": 16384
         },
         {
+          "id": "qwen3.6-35b-a3b-text@ud-q5_k_xl-128k",
+          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q5_K_XL (48 t/s, quality sweet spot)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
           "id": "qwen3.6-35b-a3b-text@ud-q4_k_xl-128k",
           "name": "Qwen3.6 35B A3B — text-only 128K UD-Q4_K_XL (56 t/s, balanced)",
           "reasoning": true,
