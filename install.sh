@@ -84,12 +84,14 @@ install_node_via_fnm() {
 
   log "Querying nodejs.org for latest Node.js Current version..."
   local latest_version index_json
-  # Download fully before piping, and use grep -m1 (not | head -1) so grep exits cleanly
-  # after the first match — otherwise head closes the pipe, grep dies with SIGPIPE, and
-  # pipefail kills the whole script silently
+  # Parse entirely in-process with bash regex — any pipe (printf|grep, curl|grep, etc.)
+  # risks SIGPIPE when the consumer exits early, which under set -euo pipefail kills
+  # the script silently. index.json is ~200KB, fits in a bash variable fine.
   index_json=$(curl -fsSL https://nodejs.org/dist/index.json) || die "Failed to fetch nodejs.org/dist/index.json"
-  latest_version=$(printf '%s' "$index_json" | grep -m1 -oE '"version":"v[0-9]+\.[0-9]+\.[0-9]+"' | cut -d'"' -f4)
-  [ -n "$latest_version" ] || die "Could not parse latest Node version from nodejs.org/dist/index.json"
+  if [[ "$index_json" =~ \"version\":\"(v[0-9]+\.[0-9]+\.[0-9]+)\" ]]; then
+    latest_version="${BASH_REMATCH[1]}"
+  fi
+  [ -n "${latest_version:-}" ] || die "Could not parse latest Node version from nodejs.org/dist/index.json"
   log "Latest Node.js Current: $latest_version"
 
   log "Installing $latest_version via fnm into $FNM_DIR..."
