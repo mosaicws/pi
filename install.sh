@@ -82,32 +82,27 @@ install_node_via_fnm() {
   install_fnm_binary
   $SUDO mkdir -p "$FNM_DIR"
 
-  log "Querying nodejs.org for latest Node.js Current version..."
-  local latest_version index_json
-  # Parse entirely in-process with bash regex — any pipe (printf|grep, curl|grep, etc.)
-  # risks SIGPIPE when the consumer exits early, which under set -euo pipefail kills
-  # the script silently. index.json is ~200KB, fits in a bash variable fine.
-  index_json=$(curl -fsSL https://nodejs.org/dist/index.json) || die "Failed to fetch nodejs.org/dist/index.json"
-  if [[ "$index_json" =~ \"version\":\"(v[0-9]+\.[0-9]+\.[0-9]+)\" ]]; then
-    latest_version="${BASH_REMATCH[1]}"
-  fi
-  [ -n "${latest_version:-}" ] || die "Could not parse latest Node version from nodejs.org/dist/index.json"
-  log "Latest Node.js Current: $latest_version"
+  log "Installing latest Node.js Current via fnm..."
+  $SUDO env FNM_DIR="$FNM_DIR" fnm install --latest --progress=never
 
-  log "Installing $latest_version via fnm into $FNM_DIR..."
-  $SUDO env FNM_DIR="$FNM_DIR" fnm install "$latest_version"
+  # Discover which version got installed by reading fnm's filesystem layout.
+  # fnm always installs to $FNM_DIR/node-versions/<version>/installation/bin/.
+  local versions=("$FNM_DIR"/node-versions/v*)
+  [ -e "${versions[0]}" ] || die "fnm install --latest completed but no versions found in $FNM_DIR/node-versions"
+  local latest_version
+  # Pick highest semver — small fixed-size list, pipe is safe (no SIGPIPE risk)
+  latest_version=$(printf '%s\n' "${versions[@]##*/}" | sort -V | tail -n1)
+  log "Installed Node $latest_version"
 
-  # Symlink from the deterministic version path, not the alias — alias layout has bitten
-  # us across fnm versions. The installation root is always node-versions/<ver>/installation.
   local node_bin_dir="$FNM_DIR/node-versions/$latest_version/installation/bin"
-  [ -d "$node_bin_dir" ] || die "Expected fnm install dir missing: $node_bin_dir"
   [ -x "$node_bin_dir/node" ] || die "node binary missing at $node_bin_dir/node"
 
-  # Set default alias for shells that source fnm — syntax is 'fnm alias <version> <name>'.
-  # Non-fatal: our /usr/local/bin symlinks already give a working system-wide Node.
-  log "Setting fnm default alias -> $latest_version"
-  $SUDO env FNM_DIR="$FNM_DIR" fnm alias "$latest_version" default || \
-    warn "fnm alias failed (non-fatal — /usr/local/bin symlinks still work)"
+  # Set default alias for shells that source fnm env. 'fnm default <ver>' is the
+  # shorthand for 'fnm alias <ver> default'. Non-fatal — /usr/local/bin symlinks
+  # already give a working system-wide Node.
+  log "Setting fnm default -> $latest_version"
+  $SUDO env FNM_DIR="$FNM_DIR" fnm default "$latest_version" || \
+    warn "fnm default failed (non-fatal — /usr/local/bin symlinks still work)"
 
   # System-wide symlinks so node/npm/npx work without shell init
   local linked=0
