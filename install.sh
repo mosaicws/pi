@@ -165,20 +165,28 @@ install_node_via_fnm() {
   log "Installed Node $(node -v), npm $(npm -v) via fnm"
 }
 
-# --- Bun ---
+# --- Bun: installed system-wide under /usr/local/bun so the layout mirrors fnm/Node.
+# Bun's upstream installer defaults to $HOME/.bun, which makes the install
+# per-invoking-user — fine for dev boxes, brittle for a shared tool: `sudo npm`
+# and `bun install -g` end up writing to different trees, and /usr/local/bin/pi
+# silently points at whichever one won last. Pinning BUN_INSTALL=/usr/local/bun
+# and running the installer as root keeps both runtimes symmetric and root-owned. ---
+BUN_ROOT="${BUN_ROOT:-/usr/local/bun}"
 install_bun() {
-  if [ ! -x "$HOME/.bun/bin/bun" ]; then
+  if [ ! -x "$BUN_ROOT/bin/bun" ]; then
     command -v unzip >/dev/null 2>&1 || { log "Installing unzip..."; $SUDO apt-get install -y unzip; }
-    log "Installing Bun..."
-    curl -fsSL https://bun.sh/install | bash
-    [ -x "$HOME/.bun/bin/bun" ] || die "Bun install finished but $HOME/.bun/bin/bun missing"
+    log "Installing Bun system-wide to $BUN_ROOT..."
+    $SUDO mkdir -p "$BUN_ROOT"
+    # Bun's installer respects $BUN_INSTALL. Run it as root so the tree ends up
+    # root-owned and visible to every user on the box — same shape as fnm.
+    $SUDO env BUN_INSTALL="$BUN_ROOT" bash -c 'curl -fsSL https://bun.sh/install | bash'
+    [ -x "$BUN_ROOT/bin/bun" ] || die "Bun install finished but $BUN_ROOT/bin/bun missing"
   else
-    log "Bun already installed at $HOME/.bun/bin/bun"
+    log "Bun already installed at $BUN_ROOT/bin/bun"
   fi
-  export BUN_INSTALL="$HOME/.bun"
-  export PATH="$BUN_INSTALL/bin:$PATH"
-  # System-wide symlink so the pi shim (which execs bun) resolves from any shell
-  $SUDO ln -sfn "$HOME/.bun/bin/bun" /usr/local/bin/bun
+  export BUN_INSTALL="$BUN_ROOT"
+  export PATH="$BUN_ROOT/bin:$PATH"
+  $SUDO ln -sfn "$BUN_ROOT/bin/bun" /usr/local/bin/bun
   log "Using Bun $(bun -v) (linked to /usr/local/bin/bun)"
 }
 
@@ -187,9 +195,10 @@ detect_current_runtime() {
   local target
   target=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
   case "$target" in
-    "$FNM_DIR"/*)  echo node ;;
-    */.bun/*)      echo bun ;;
-    *)             echo "" ;;
+    "$FNM_DIR"/*)    echo node ;;
+    "$BUN_ROOT"/*)   echo bun ;;
+    */.bun/*)        echo bun ;;  # legacy per-user Bun install (pre-system-wide script)
+    *)               echo "" ;;
   esac
 }
 
@@ -204,6 +213,10 @@ uninstall_pi_from() {
       fi
       ;;
     bun)
+      # Remove pi from the system-wide Bun tree and any legacy per-user one.
+      if [ -x "$BUN_ROOT/bin/bun" ]; then
+        $SUDO env BUN_INSTALL="$BUN_ROOT" "$BUN_ROOT/bin/bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+      fi
       if [ -x "$HOME/.bun/bin/bun" ]; then
         "$HOME/.bun/bin/bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
       fi
@@ -274,30 +287,59 @@ if [ -n "$current_pi_runtime" ] && [ "$current_pi_runtime" != "$PI_RUNTIME" ]; t
   current_pi_runtime=""
 fi
 
+# Migrate legacy per-user Bun installs ($HOME/.bun) to the system-wide tree.
+# Same runtime, wrong location — runtime-switch logic above doesn't catch this.
+if [ "$current_pi_runtime" = "bun" ] && [ "$PI_RUNTIME" = "bun" ]; then
+  _legacy_pi=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
+  case "$_legacy_pi" in
+    */.bun/*)
+      warn "Legacy per-user Bun install detected at $_legacy_pi — migrating to $BUN_ROOT"
+      _legacy_bun="${_legacy_pi%/pi}/bun"
+      if [ -x "$_legacy_bun" ]; then
+        "$_legacy_bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+      fi
+      $SUDO rm -f /usr/local/bin/pi
+      log "  (the $HOME/.bun tree itself is left intact in case other tools use it)"
+      ;;
+  esac
+fi
+
 # Drop a symlink that points at a path that no longer exists (stale from earlier runs)
 [ -L /usr/local/bin/pi ] && [ ! -e /usr/local/bin/pi ] && $SUDO rm -f /usr/local/bin/pi
 
-# Only trust "pi --version" if it belongs to the runtime we want; otherwise reinstall
-if [ "$current_pi_runtime" = "$PI_RUNTIME" ] && pi --version >/dev/null 2>&1; then
-  log "pi already installed on $PI_RUNTIME: $(pi --version 2>/dev/null)"
-else
-  case "$PI_RUNTIME" in
-    node)
-      log "Installing pi via npm..."
-      # npm -g writes into the fnm tree (root-owned), so sudo with PATH works cleanly
-      $SUDO env PATH="$PATH" npm install -g @mariozechner/pi-coding-agent
-      pi_src="$FNM_DIR/aliases/default/bin/pi"
-      ;;
-    bun)
-      log "Installing pi via Bun (experimental)..."
-      bun install -g @mariozechner/pi-coding-agent
-      pi_src="$HOME/.bun/bin/pi"
-      ;;
-  esac
-  [ -e "$pi_src" ] || die "pi install completed but shim not found at $pi_src"
-  $SUDO ln -sfn "$pi_src" /usr/local/bin/pi
-  log "Linked /usr/local/bin/pi -> $pi_src"
-fi
+# Always run the package manager — npm/bun are idempotent (no-op when up-to-date,
+# upgrade when a newer version is published). Skipping here previously meant
+# re-running install.sh never picked up pi releases.
+_pre_ver=$(pi --version 2>/dev/null || echo "none")
+case "$PI_RUNTIME" in
+  node)
+    log "Installing/updating pi via npm (current: $_pre_ver)..."
+    # npm -g writes into the fnm tree (root-owned), so sudo with PATH works cleanly
+    $SUDO env PATH="$PATH" npm install -g @mariozechner/pi-coding-agent
+    pi_src="$FNM_DIR/aliases/default/bin/pi"
+    ;;
+  bun)
+    log "Installing/updating pi via Bun (experimental, current: $_pre_ver)..."
+    $SUDO env BUN_INSTALL="$BUN_ROOT" PATH="$BUN_ROOT/bin:$PATH" bun install -g @mariozechner/pi-coding-agent
+    pi_src="$BUN_ROOT/bin/pi"
+    ;;
+esac
+[ -e "$pi_src" ] || die "pi install completed but shim not found at $pi_src"
+$SUDO ln -sfn "$pi_src" /usr/local/bin/pi
+log "Linked /usr/local/bin/pi -> $pi_src"
+
+# Drift guard: confirm /usr/local/bin/pi actually resolves into the runtime we picked.
+# Catches the class of bug where a parallel install (e.g. sudo npm while bun owned
+# the symlink) leaves pi served from the wrong tree.
+_final_target=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
+case "$PI_RUNTIME" in
+  node) _expected_prefix="$FNM_DIR" ;;
+  bun)  _expected_prefix="$BUN_ROOT" ;;
+esac
+case "$_final_target" in
+  "$_expected_prefix"/*) ;;
+  *) warn "Drift: /usr/local/bin/pi -> $_final_target (expected under $_expected_prefix) — another runtime may still own the symlink" ;;
+esac
 
 # --- Clone or update the config repo ---
 step "Syncing configs"
