@@ -77,86 +77,148 @@ install_fnm_binary() {
   log "Installed fnm $(fnm --version)"
 }
 
+# --- Runtime deps for Node's prebuilt binaries ---
+ensure_libatomic1() {
+  # Node's nodejs.org tarball links against libatomic.so.1, which is missing
+  # from minimal Debian/Ubuntu images (LXC templates, cloud-init minbase).
+  # Without it: "node: error while loading shared libraries: libatomic.so.1".
+  # dpkg -s is authoritative; ldconfig -p isn't on non-root PATH everywhere.
+  command -v dpkg >/dev/null 2>&1 || return 0
+  dpkg -s libatomic1 >/dev/null 2>&1 && return 0
+  log "Installing libatomic1 (required by Node prebuilt binaries)..."
+  $SUDO apt-get install -y libatomic1
+}
+
+# --- Remove fnm-managed Node versions that aren't the current default ---
+cleanup_stale_node_versions() {
+  local keep="$1"
+  [ -n "$keep" ] || return 0
+  local dir removed=0
+  for dir in "$FNM_DIR"/node-versions/v*; do
+    [ -d "$dir" ] || continue
+    local ver="${dir##*/}"
+    [ "$ver" = "$keep" ] && continue
+    log "Removing stale Node $ver"
+    $SUDO env FNM_DIR="$FNM_DIR" fnm uninstall "$ver" >/dev/null 2>&1 || \
+      $SUDO rm -rf "$dir"
+    removed=$((removed + 1))
+  done
+  [ "$removed" -eq 0 ] || log "Cleaned up $removed stale Node version(s)"
+}
+
 # --- Node install via fnm, symlinks to /usr/local/bin for system-wide PATH ---
 install_node_via_fnm() {
   install_fnm_binary
   $SUDO mkdir -p "$FNM_DIR"
-
-  # Node's prebuilt Linux binaries from nodejs.org link against libatomic.so.1,
-  # which isn't shipped by default in minimal Debian/Ubuntu LXC templates.
-  # Without it, 'node' runs but fails with "libatomic.so.1: cannot open shared object file".
-  if ! ldconfig -p 2>/dev/null | grep -q 'libatomic\.so\.1'; then
-    log "Installing libatomic1 (required by Node prebuilt binaries)..."
-    $SUDO apt-get install -y libatomic1
-  fi
+  ensure_libatomic1
 
   log "Installing latest Node.js Current via fnm..."
   $SUDO env FNM_DIR="$FNM_DIR" fnm install --latest --progress=never
 
-  # Discover which version got installed by reading fnm's filesystem layout.
-  # fnm always installs to $FNM_DIR/node-versions/<version>/installation/bin/.
-  local versions=("$FNM_DIR"/node-versions/v*)
-  [ -e "${versions[0]}" ] || die "fnm install --latest completed but no versions found in $FNM_DIR/node-versions"
+  # fnm has no "which version did I just install" query — read the filesystem.
+  # Layout is stable: $FNM_DIR/node-versions/vX.Y.Z/installation/bin/
   local latest_version
-  # Pick highest semver — small fixed-size list, pipe is safe (no SIGPIPE risk)
-  latest_version=$(printf '%s\n' "${versions[@]##*/}" | sort -V | tail -n1)
-  log "Installed Node $latest_version"
+  latest_version=$(ls -1 "$FNM_DIR/node-versions" 2>/dev/null | grep '^v' | sort -V | tail -n1)
+  [ -n "$latest_version" ] || die "fnm install --latest completed but no versions found in $FNM_DIR/node-versions"
 
-  local node_bin_dir="$FNM_DIR/node-versions/$latest_version/installation/bin"
-  [ -x "$node_bin_dir/node" ] || die "node binary missing at $node_bin_dir/node"
-
-  # Set default alias for shells that source fnm env. 'fnm default <ver>' is the
-  # shorthand for 'fnm alias <ver> default'. Non-fatal — /usr/local/bin symlinks
-  # already give a working system-wide Node.
   log "Setting fnm default -> $latest_version"
-  $SUDO env FNM_DIR="$FNM_DIR" fnm default "$latest_version" || \
-    warn "fnm default failed (non-fatal — /usr/local/bin symlinks still work)"
+  $SUDO env FNM_DIR="$FNM_DIR" fnm default "$latest_version"
 
-  # System-wide symlinks so node/npm/npx work without shell init
-  local linked=0
-  for bin in node npm npx corepack; do
-    if [ -e "$node_bin_dir/$bin" ]; then
-      $SUDO ln -sfn "$node_bin_dir/$bin" "/usr/local/bin/$bin"
-      log "Linked /usr/local/bin/$bin -> $node_bin_dir/$bin"
-      linked=$((linked + 1))
-    else
-      warn "Expected binary not in fnm install: $node_bin_dir/$bin (skipping)"
-    fi
+  # Link through the 'default' alias, not the concrete version path.
+  # fnm maintains $FNM_DIR/aliases/default as a symlink → the current default's
+  # installation dir, so a future `fnm default <new>` auto-propagates to /usr/local/bin.
+  local default_bin="$FNM_DIR/aliases/default/bin"
+  [ -x "$default_bin/node" ] || die "fnm default alias missing expected binary: $default_bin/node"
+
+  for bin in node npm npx; do
+    [ -e "$default_bin/$bin" ] || die "Missing binary in fnm install: $default_bin/$bin"
+    $SUDO ln -sfn "$default_bin/$bin" "/usr/local/bin/$bin"
   done
-  [ "$linked" -gt 0 ] || die "No Node binaries linked — fnm install is broken"
+  # corepack is optional — removed from Node core in v25+; silently skip if absent.
+  [ -e "$default_bin/corepack" ] && $SUDO ln -sfn "$default_bin/corepack" /usr/local/bin/corepack
 
-  command -v node >/dev/null 2>&1 || die "node not on PATH after symlink — expected /usr/local/bin/node -> $node_bin_dir/node"
+  cleanup_stale_node_versions "$latest_version"
+
+  command -v node >/dev/null 2>&1 || die "node not on PATH after symlink"
   local installed_major
   installed_major=$(node -v | sed 's/^v\([0-9]\+\).*/\1/')
   [ "$installed_major" -ge "$NODE_MIN_MAJOR" ] || die "Installed Node is v$installed_major, need ≥$NODE_MIN_MAJOR"
+
+  # Node tarballs ship with whatever npm was current at build time — often stale.
+  # Upgrade in place so subsequent global installs (pi) use the latest npm.
+  log "Updating npm to latest..."
+  $SUDO env PATH="$PATH" npm install -g --silent npm@latest >/dev/null || \
+    warn "npm self-update failed (non-fatal — continuing with $(npm -v))"
+
   log "Installed Node $(node -v), npm $(npm -v) via fnm"
 }
 
 # --- Bun ---
 install_bun() {
-  if command -v bun >/dev/null 2>&1; then
-    log "Bun already installed: $(bun -v)"
-    return
+  if [ ! -x "$HOME/.bun/bin/bun" ]; then
+    command -v unzip >/dev/null 2>&1 || { log "Installing unzip..."; $SUDO apt-get install -y unzip; }
+    log "Installing Bun..."
+    curl -fsSL https://bun.sh/install | bash
+    [ -x "$HOME/.bun/bin/bun" ] || die "Bun install finished but $HOME/.bun/bin/bun missing"
+  else
+    log "Bun already installed at $HOME/.bun/bin/bun"
   fi
-  command -v unzip >/dev/null 2>&1 || { log "Installing unzip..."; $SUDO apt-get install -y unzip; }
-  log "Installing Bun..."
-  curl -fsSL https://bun.sh/install | bash
   export BUN_INSTALL="$HOME/.bun"
   export PATH="$BUN_INSTALL/bin:$PATH"
-  command -v bun >/dev/null 2>&1 || die "Bun install finished but 'bun' not on PATH"
-  log "Installed Bun $(bun -v)"
+  # System-wide symlink so the pi shim (which execs bun) resolves from any shell
+  $SUDO ln -sfn "$HOME/.bun/bin/bun" /usr/local/bin/bun
+  log "Using Bun $(bun -v) (linked to /usr/local/bin/bun)"
+}
+
+# --- Detect which runtime owns /usr/local/bin/pi (readlink -f = resolve all symlinks) ---
+detect_current_runtime() {
+  local target
+  target=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
+  case "$target" in
+    "$FNM_DIR"/*)  echo node ;;
+    */.bun/*)      echo bun ;;
+    *)             echo "" ;;
+  esac
+}
+
+# --- Remove pi from a given runtime's global package tree + drop the /usr/local/bin shim ---
+uninstall_pi_from() {
+  local rt="$1"
+  log "Removing pi from $rt runtime..."
+  case "$rt" in
+    node)
+      if command -v npm >/dev/null 2>&1; then
+        $SUDO env PATH="$PATH" npm uninstall -g --silent @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+      fi
+      ;;
+    bun)
+      if [ -x "$HOME/.bun/bin/bun" ]; then
+        "$HOME/.bun/bin/bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+      fi
+      ;;
+  esac
+  $SUDO rm -f /usr/local/bin/pi
 }
 
 # --- Interactive runtime prompt when stdin is a TTY and no explicit PI_RUNTIME ---
+# Default to whatever is currently installed (keeps Enter a safe no-op on re-runs).
 if [ "$PI_RUNTIME" = "auto" ] && [ -t 0 ]; then
+  _current=$(detect_current_runtime)
+  _default="${_current:-node}"
   printf '\n'
-  printf 'Select JavaScript runtime for pi:\n'
-  printf '  [n] Node.js (default) — recommended, full extension support\n'
-  printf '  [b] Bun — experimental, some pi extensions may misbehave\n'
-  read -r -p "Choice [N/b]: " _rt_choice || _rt_choice=""
+  printf 'Select JavaScript runtime for pi'
+  [ -n "$_current" ] && printf ' (current: %s)' "$_current"
+  printf ':\n'
+  printf '  [n] Node.js — recommended, full extension support%s\n' \
+    "$([ "$_default" = node ] && printf ' (default)')"
+  printf '  [b] Bun — experimental, some pi extensions may misbehave%s\n' \
+    "$([ "$_default" = bun ] && printf ' (default)')"
+  read -r -p "Choice [n/b, enter=$_default]: " _rt_choice || _rt_choice=""
   case "${_rt_choice,,}" in
-    b|bun) PI_RUNTIME=bun ;;
-    *)     PI_RUNTIME=node ;;
+    n|node) PI_RUNTIME=node ;;
+    b|bun)  PI_RUNTIME=bun ;;
+    "")     PI_RUNTIME="$_default" ;;
+    *)      die "Invalid choice: '$_rt_choice' (expected n or b)" ;;
   esac
 fi
 # Non-TTY fallback: default auto -> node
@@ -175,33 +237,39 @@ case "$PI_RUNTIME" in
   *) die "PI_RUNTIME must be 'node' or 'bun' (got: $PI_RUNTIME)" ;;
 esac
 
-# --- Install pi ---
-# Actually run pi to test it, not just check symlink — runtime switches leave stale symlinks
-if pi --version >/dev/null 2>&1; then
-  log "pi already installed: $(pi --version 2>/dev/null)"
+# --- Install / switch pi runtime ---
+# Detect what's currently linked at /usr/local/bin/pi so we know whether to switch.
+current_pi_runtime=$(detect_current_runtime)
+if [ -n "$current_pi_runtime" ] && [ "$current_pi_runtime" != "$PI_RUNTIME" ]; then
+  log "Switching pi runtime: $current_pi_runtime -> $PI_RUNTIME"
+  log "  (configs in $PI_DIR and $CONFIG_DIR are preserved)"
+  uninstall_pi_from "$current_pi_runtime"
+  current_pi_runtime=""
+fi
+
+# Drop a symlink that points at a path that no longer exists (stale from earlier runs)
+[ -L /usr/local/bin/pi ] && [ ! -e /usr/local/bin/pi ] && $SUDO rm -f /usr/local/bin/pi
+
+# Only trust "pi --version" if it belongs to the runtime we want; otherwise reinstall
+if [ "$current_pi_runtime" = "$PI_RUNTIME" ] && pi --version >/dev/null 2>&1; then
+  log "pi already installed on $PI_RUNTIME: $(pi --version 2>/dev/null)"
 else
-  # Remove any stale symlink pointing at a non-existent binary
-  [ -L /usr/local/bin/pi ] && [ ! -e /usr/local/bin/pi ] && $SUDO rm -f /usr/local/bin/pi
   case "$PI_RUNTIME" in
     node)
       log "Installing pi via npm..."
-      # When Node came from fnm (owned by root), npm -g writes into the fnm tree — sudo works cleanly
+      # npm -g writes into the fnm tree (root-owned), so sudo with PATH works cleanly
       $SUDO env PATH="$PATH" npm install -g @mariozechner/pi-coding-agent
+      pi_src="$FNM_DIR/aliases/default/bin/pi"
       ;;
     bun)
       log "Installing pi via Bun (experimental)..."
       bun install -g @mariozechner/pi-coding-agent
+      pi_src="$HOME/.bun/bin/pi"
       ;;
   esac
-fi
-
-# If pi was installed inside fnm's tree, the shim isn't on PATH — symlink it
-if [ "$PI_RUNTIME" = "node" ] && [ ! -e /usr/local/bin/pi ]; then
-  pi_path="$FNM_DIR/aliases/default/bin/pi"
-  if [ -e "$pi_path" ]; then
-    $SUDO ln -sfn "$pi_path" /usr/local/bin/pi
-    log "Linked /usr/local/bin/pi -> $pi_path"
-  fi
+  [ -e "$pi_src" ] || die "pi install completed but shim not found at $pi_src"
+  $SUDO ln -sfn "$pi_src" /usr/local/bin/pi
+  log "Linked /usr/local/bin/pi -> $pi_src"
 fi
 
 # --- Clone or update the config repo ---
