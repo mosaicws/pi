@@ -14,10 +14,6 @@
           "name": "Qwen3.6 35B A3B (LM Studio)"
         },
         {
-          "id": "google_gemma-4-26b-a4b-it",
-          "name": "Gemma 4 26B A4B it (LM Studio)"
-        },
-        {
           "id": "qwen_qwen3.5-27b@iq2_m",
           "name": "Qwen3.5 27B IQ2_M (LM Studio)"
         }
@@ -92,27 +88,67 @@
         },
         {
           "id": "google_gemma-4-26b-a4b-it",
-          "name": "Gemma 4 26B A4B it — vision",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 32K",
           "reasoning": false,
           "input": ["text", "image"],
           "contextWindow": 32768,
           "maxTokens": 8192
         },
         {
+          "id": "google_gemma-4-26b-a4b-it-128k",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 128K",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
           "id": "google_gemma-4-26b-a4b-it-text",
-          "name": "Gemma 4 26B A4B it — text-only (fastest)",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 32K (fastest)",
           "reasoning": false,
           "input": ["text"],
           "contextWindow": 32768,
           "maxTokens": 8192
         },
         {
-          "id": "google_gemma-4-31b-it",
-          "name": "Gemma 4 31B dense it (llama-swap)",
+          "id": "google_gemma-4-26b-a4b-it-text-128k",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 128K",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
+          "id": "google_gemma-4-26b-a4b-it-iq4",
+          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 32K (fastest vision)",
           "reasoning": false,
           "input": ["text", "image"],
-          "contextWindow": 16384,
-          "maxTokens": 4096
+          "contextWindow": 32768,
+          "maxTokens": 8192
+        },
+        {
+          "id": "google_gemma-4-26b-a4b-it-iq4-128k",
+          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 128K",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
+          "id": "google_gemma-4-26b-a4b-it-text-iq4",
+          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — text-only 32K (fastest: 60 t/s)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 8192
+        },
+        {
+          "id": "google_gemma-4-26b-a4b-it-text-iq4-128k",
+          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — text-only 128K (56 t/s)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 8192
         },
         {
           "id": "qwen_qwen3.6-27b-iq4nl",
