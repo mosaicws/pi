@@ -293,13 +293,21 @@ if [ "$current_pi_runtime" = "bun" ] && [ "$PI_RUNTIME" = "bun" ]; then
   _legacy_pi=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
   case "$_legacy_pi" in
     */.bun/*)
-      warn "Legacy per-user Bun install detected at $_legacy_pi — migrating to $BUN_ROOT"
-      _legacy_bun="${_legacy_pi%/pi}/bun"
-      if [ -x "$_legacy_bun" ]; then
-        "$_legacy_bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+      # readlink -f resolves every symlink in the chain, so $_legacy_pi can be
+      # the final cli.js, not the bun bin shim. Derive the bun root by stripping
+      # from "/.bun/" onward, then re-append "/.bun" — works at any chain depth.
+      _legacy_bun_root="${_legacy_pi%%/.bun/*}/.bun"
+      warn "Legacy per-user Bun install detected ($_legacy_bun_root) — migrating to $BUN_ROOT"
+      if [ -x "$_legacy_bun_root/bin/bun" ]; then
+        env BUN_INSTALL="$_legacy_bun_root" "$_legacy_bun_root/bin/bun" \
+          remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
       fi
+      # Belt and braces: drop the shim directly in case bun's uninstall left it.
+      # This matters because ~/.bashrc often has $HOME/.bun/bin earlier in PATH
+      # than /usr/local/bin — a surviving shim shadows the new system-wide pi.
+      [ -e "$_legacy_bun_root/bin/pi" ] && rm -f "$_legacy_bun_root/bin/pi"
       $SUDO rm -f /usr/local/bin/pi
-      log "  (the $HOME/.bun tree itself is left intact in case other tools use it)"
+      log "  (the $_legacy_bun_root tree itself is left intact in case other tools use it)"
       ;;
   esac
 fi
