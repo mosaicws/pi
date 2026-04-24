@@ -15,9 +15,21 @@ PI_RUNTIME="${PI_RUNTIME:-auto}"   # auto | node | bun
 NODE_MIN_MAJOR=25
 FNM_DIR="${FNM_DIR:-/usr/local/fnm}"
 
-log()  { printf '\033[1;34m[pi-config]\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[pi-config]\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[1;31m[pi-config]\033[0m %s\n' "$*" >&2; exit 1; }
+# --- Colours (respects NO_COLOR, disabled when stdout isn't a TTY) ---
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  C_RESET=$'\033[0m'; C_BOLD=$'\033[1m'; C_DIM=$'\033[2m'
+  C_BLUE=$'\033[1;34m'; C_CYAN=$'\033[1;36m'; C_GREEN=$'\033[1;32m'
+  C_YELLOW=$'\033[1;33m'; C_RED=$'\033[1;31m'
+else
+  C_RESET=''; C_BOLD=''; C_DIM=''
+  C_BLUE=''; C_CYAN=''; C_GREEN=''; C_YELLOW=''; C_RED=''
+fi
+
+log()  { printf '%s[pi]%s %s\n' "$C_BLUE" "$C_RESET" "$*"; }
+ok()   { printf '%s[pi]%s %s%s%s\n' "$C_GREEN" "$C_RESET" "$C_GREEN" "$*" "$C_RESET"; }
+warn() { printf '%s[pi]%s %s%s%s\n' "$C_YELLOW" "$C_RESET" "$C_YELLOW" "$*" "$C_RESET" >&2; }
+die()  { printf '%s[pi]%s %s%s%s\n' "$C_RED" "$C_RESET" "$C_RED" "$*" "$C_RESET" >&2; exit 1; }
+step() { printf '\n%s━━ %s%s %s━━%s\n' "$C_CYAN" "$C_BOLD" "$*" "$C_CYAN" "$C_RESET"; }
 
 # --- Privilege detection ---
 is_root() { [ "$(id -u)" = "0" ]; }
@@ -238,6 +250,7 @@ fi
 [ "$PI_RUNTIME" = "auto" ] && PI_RUNTIME=node
 
 # --- Runtime selection ---
+step "Runtime: $PI_RUNTIME"
 case "$PI_RUNTIME" in
   node)
     cleanup_stale_nodesource
@@ -251,6 +264,7 @@ case "$PI_RUNTIME" in
 esac
 
 # --- Install / switch pi runtime ---
+step "Installing pi"
 # Detect what's currently linked at /usr/local/bin/pi so we know whether to switch.
 current_pi_runtime=$(detect_current_runtime)
 if [ -n "$current_pi_runtime" ] && [ "$current_pi_runtime" != "$PI_RUNTIME" ]; then
@@ -286,6 +300,7 @@ else
 fi
 
 # --- Clone or update the config repo ---
+step "Syncing configs"
 if [ -d "$CONFIG_DIR/.git" ]; then
   log "Updating $CONFIG_DIR"
   git -C "$CONFIG_DIR" pull --ff-only
@@ -329,17 +344,17 @@ if [ ! -f "$PI_DIR/auth.json" ]; then
 fi
 
 # --- Final verification: confirm which runtime is actually serving pi ---
-printf '\n'
+step "Summary"
 _final_pi=$(pi --version 2>/dev/null || echo "unavailable")
 case "$PI_RUNTIME" in
   node) _final_rt="Node.js $(node -v 2>/dev/null || echo "?")" ;;
   bun)  _final_rt="Bun v$(bun -v 2>/dev/null || echo "?")" ;;
 esac
 _pi_target=$(readlink -f "$(command -v pi 2>/dev/null)" 2>/dev/null || echo "?")
-log "Installed: pi v$_final_pi  |  Runtime: $_final_rt"
-log "  /usr/local/bin/pi -> $_pi_target"
-log "Add API keys to $PI_DIR/auth.json (see $CONFIG_DIR/auth.json.example)."
-log "Update later: re-run this script, or: git -C $CONFIG_DIR pull"
+ok   "pi v$_final_pi  |  Runtime: $_final_rt"
+log  "  /usr/local/bin/pi -> $_pi_target"
+log  "Add API keys:   $PI_DIR/auth.json  (see $CONFIG_DIR/auth.json.example)"
+log  "Update later:   re-run this script, or: git -C $CONFIG_DIR pull"
 if [ "$PI_RUNTIME" = "bun" ]; then
-  log "NOTE: Bun PATH may not be active in your shell. Run: source ~/.bashrc (or restart shell)"
+  warn "Bun PATH may not be active in your current shell — run: source ~/.bashrc"
 fi
