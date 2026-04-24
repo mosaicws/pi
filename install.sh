@@ -231,6 +231,12 @@ cleanup_legacy_bun_user_state() {
   local legacy_shim="$legacy_root/bin/pi"
   [ -d "$legacy_root" ] || return 0
 
+  # Snapshot whether the legacy shim exists BEFORE step (a) may remove it.
+  # If it was there, the invoking user's shell likely has it cached in its
+  # bash hash table — the fix at step (b) depends on knowing this.
+  local had_shim=0
+  [ -e "$legacy_shim" ] && had_shim=1
+
   # (a) Deregister pi from the legacy Bun global tree so bun's own metadata
   # is consistent. Run as the home's owner so the tree's permissions stay
   # user-owned; fall back to a best-effort if that's not possible.
@@ -246,12 +252,17 @@ cleanup_legacy_bun_user_state() {
     fi
   fi
 
-  # (b) Belt-and-braces shim removal. bun remove -g usually drops the shim but
-  # has been observed to miss it on partial/legacy installs. The shim is the
-  # file that actually shadows pi in PATH, so this is the load-bearing line.
-  if [ -e "$legacy_shim" ]; then
-    as_owner rm -f "$legacy_shim"
-    log "Removed legacy per-user pi shim: $legacy_shim"
+  # (b) If the legacy shim was present, replace it with a forwarding symlink
+  # to the system pi — do NOT just delete it. The invoking user's current
+  # shell has two stale references we can't fix from here:
+  #   - PATH from shell startup still contains $HOME/.bun/bin/
+  #   - bash's hash cache still maps `pi` to $HOME/.bun/bin/pi
+  # Deleting the shim breaks `pi` in that shell until `hash -r` / reshell.
+  # Forwarding keeps the stale references resolving while (c) removes the
+  # path entirely from new shells.
+  if [ "$had_shim" = 1 ]; then
+    as_owner ln -sfn /usr/local/bin/pi "$legacy_shim"
+    log "Redirected legacy per-user pi shim: $legacy_shim -> /usr/local/bin/pi"
     cleaned=1
   fi
 
@@ -485,6 +496,3 @@ ok   "pi v$_final_pi  |  Runtime: $_final_rt"
 log  "  /usr/local/bin/pi -> $_pi_target"
 log  "Add API keys:   $PI_DIR/auth.json  (see $CONFIG_DIR/auth.json.example)"
 log  "Update later:   re-run this script, or: git -C $CONFIG_DIR pull"
-if [ "$PI_RUNTIME" = "bun" ]; then
-  warn "Bun PATH may not be active in your current shell — run: source ~/.bashrc"
-fi
