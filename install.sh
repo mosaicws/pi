@@ -82,6 +82,14 @@ install_node_via_fnm() {
   install_fnm_binary
   $SUDO mkdir -p "$FNM_DIR"
 
+  # Node's prebuilt Linux binaries from nodejs.org link against libatomic.so.1,
+  # which isn't shipped by default in minimal Debian/Ubuntu LXC templates.
+  # Without it, 'node' runs but fails with "libatomic.so.1: cannot open shared object file".
+  if ! ldconfig -p 2>/dev/null | grep -q 'libatomic\.so\.1'; then
+    log "Installing libatomic1 (required by Node prebuilt binaries)..."
+    $SUDO apt-get install -y libatomic1
+  fi
+
   log "Installing latest Node.js Current via fnm..."
   $SUDO env FNM_DIR="$FNM_DIR" fnm install --latest --progress=never
 
