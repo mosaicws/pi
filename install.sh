@@ -232,7 +232,7 @@ if [ "$PI_RUNTIME" = "auto" ] && [ -t 0 ]; then
 
   printf '\n'
   printf 'Select JavaScript runtime for pi'
-  [ -n "$_status" ] && printf ' (currently: %s)' "$_status"
+  [ -n "$_status" ] && printf ' %s(currently: %s)%s' "$C_GREEN" "$_status" "$C_RESET"
   printf ':\n'
   printf '  [n] Node.js — recommended, full extension support%s\n' \
     "$([ "$_default" = node ] && printf ' (default)')"
