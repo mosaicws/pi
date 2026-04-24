@@ -31,6 +31,30 @@
       },
       "models": [
         {
+          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-128k",
+          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q6_K_XL (37 t/s, highest quality)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@ud-q4_k_xl-128k",
+          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q4_K_XL (56 t/s, balanced)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@q4_k_m-128k",
+          "name": "Qwen3.6 35B A3B — text-only 128K Q4_K_M (62 t/s, speed)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
           "id": "qwen3.6-35b-a3b@q4_k_m",
           "name": "Qwen3.6 35B A3B — vision",
           "reasoning": true,
@@ -65,30 +89,6 @@
         {
           "id": "qwen3.6-35b-a3b-heretic@q4_k_m-128k",
           "name": "Qwen3.6 35B A3B Heretic — text-only 128K",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 131072,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-128k",
-          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q6_K_XL (37 t/s, highest quality)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 131072,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-text@ud-q4_k_xl-128k",
-          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q4_K_XL (56 t/s, quality pick)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 131072,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-text@q4_k_m-128k",
-          "name": "Qwen3.6 35B A3B — text-only 128K Q4_K_M (62 t/s, speed pick)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
