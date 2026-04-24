@@ -205,9 +205,22 @@ uninstall_pi_from() {
 if [ "$PI_RUNTIME" = "auto" ] && [ -t 0 ]; then
   _current=$(detect_current_runtime)
   _default="${_current:-node}"
+
+  # If pi is already installed, show version + runtime version so the user can
+  # verify what they're switching from.
+  _status=""
+  if [ -n "$_current" ] && command -v pi >/dev/null 2>&1; then
+    _pi_ver=$(pi --version 2>/dev/null || echo "?")
+    case "$_current" in
+      node) _rt_ver="Node.js $(node -v 2>/dev/null || echo "?")" ;;
+      bun)  _rt_ver="Bun v$(bun -v 2>/dev/null || echo "?")" ;;
+    esac
+    _status="pi v$_pi_ver on $_rt_ver"
+  fi
+
   printf '\n'
   printf 'Select JavaScript runtime for pi'
-  [ -n "$_current" ] && printf ' (current: %s)' "$_current"
+  [ -n "$_status" ] && printf ' (currently: %s)' "$_status"
   printf ':\n'
   printf '  [n] Node.js — recommended, full extension support%s\n' \
     "$([ "$_default" = node ] && printf ' (default)')"
@@ -315,8 +328,16 @@ if [ ! -f "$PI_DIR/auth.json" ]; then
   log "Created empty $PI_DIR/auth.json (0600)"
 fi
 
+# --- Final verification: confirm which runtime is actually serving pi ---
 printf '\n'
-log "Done. Runtime: $PI_RUNTIME"
+_final_pi=$(pi --version 2>/dev/null || echo "unavailable")
+case "$PI_RUNTIME" in
+  node) _final_rt="Node.js $(node -v 2>/dev/null || echo "?")" ;;
+  bun)  _final_rt="Bun v$(bun -v 2>/dev/null || echo "?")" ;;
+esac
+_pi_target=$(readlink -f "$(command -v pi 2>/dev/null)" 2>/dev/null || echo "?")
+log "Installed: pi v$_final_pi  |  Runtime: $_final_rt"
+log "  /usr/local/bin/pi -> $_pi_target"
 log "Add API keys to $PI_DIR/auth.json (see $CONFIG_DIR/auth.json.example)."
 log "Update later: re-run this script, or: git -C $CONFIG_DIR pull"
 if [ "$PI_RUNTIME" = "bun" ]; then
