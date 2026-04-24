@@ -231,12 +231,6 @@ cleanup_legacy_bun_user_state() {
   local legacy_shim="$legacy_root/bin/pi"
   [ -d "$legacy_root" ] || return 0
 
-  # Snapshot whether the legacy shim exists BEFORE step (a) may remove it.
-  # If it was there, the invoking user's shell likely has it cached in its
-  # bash hash table — the fix at step (b) depends on knowing this.
-  local had_shim=0
-  [ -e "$legacy_shim" ] && had_shim=1
-
   # (a) Deregister pi from the legacy Bun global tree so bun's own metadata
   # is consistent. Run as the home's owner so the tree's permissions stay
   # user-owned; fall back to a best-effort if that's not possible.
@@ -252,17 +246,18 @@ cleanup_legacy_bun_user_state() {
     fi
   fi
 
-  # (b) If the legacy shim was present, replace it with a forwarding symlink
-  # to the system pi — do NOT just delete it. The invoking user's current
-  # shell has two stale references we can't fix from here:
-  #   - PATH from shell startup still contains $HOME/.bun/bin/
+  # (b) Ensure $HOME/.bun/bin/pi is a forwarding symlink to the system pi,
+  # replacing any Bun-managed shim that may be there. Two stale references
+  # in the invoking user's shell need this path to keep resolving:
+  #   - PATH loaded at shell startup still contains $HOME/.bun/bin/
   #   - bash's hash cache still maps `pi` to $HOME/.bun/bin/pi
-  # Deleting the shim breaks `pi` in that shell until `hash -r` / reshell.
-  # Forwarding keeps the stale references resolving while (c) removes the
-  # path entirely from new shells.
-  if [ "$had_shim" = 1 ]; then
+  # Deleting the shim outright (as earlier versions of this script did)
+  # breaks `pi` in that shell until `hash -r` / reshell — and leaves users
+  # stuck forever if their previous run already deleted it. Forwarding is
+  # idempotent and retroactively repairs the broken state on reruns.
+  if [ -d "$legacy_root/bin" ]; then
     as_owner ln -sfn /usr/local/bin/pi "$legacy_shim"
-    log "Redirected legacy per-user pi shim: $legacy_shim -> /usr/local/bin/pi"
+    log "Forwarding legacy per-user pi shim: $legacy_shim -> /usr/local/bin/pi"
     cleaned=1
   fi
 
