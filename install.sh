@@ -44,6 +44,19 @@ for bin in git curl; do
   command -v "$bin" >/dev/null 2>&1 || die "Missing dependency: $bin (install with: apt install -y $bin)"
 done
 
+# --- Identify the invoking (non-root) user's home, even under sudo ---
+# When the script is run via `sudo bash install.sh`, $HOME is root's home but
+# any legacy per-user Bun state lives in the original user's home. sudo sets
+# $SUDO_USER to the invoking login name; resolve that via getent to get the
+# correct homedir. Falls back to $HOME when not running under sudo.
+invoking_home() {
+  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6
+  else
+    printf '%s' "$HOME"
+  fi
+}
+
 # --- Clean up broken NodeSource repo left by earlier runs (Debian 13 sqv issue) ---
 cleanup_stale_nodesource() {
   local ns_list="/etc/apt/sources.list.d/nodesource.list"
@@ -190,6 +203,79 @@ install_bun() {
   log "Using Bun $(bun -v) (linked to /usr/local/bin/bun)"
 }
 
+# --- Clean up legacy per-user Bun state that shadows the system-wide install ---
+# Bun's upstream `curl | bash` installer — the one earlier versions of this
+# script used — does two user-scoped things we need to reverse after moving
+# Bun to /usr/local/bun:
+#   (1) Writes a pi shim at $HOME/.bun/bin/pi. With $HOME/.bun/bin prepended
+#       to PATH (see (2)), this silently shadows /usr/local/bin/pi in every
+#       interactive shell — the user keeps running the old version forever.
+#   (2) Appends a 3-line PATH-prepend block to ~/.bashrc / ~/.zshrc. Once Bun
+#       is system-wide at /usr/local/bin/bun this block is dead weight, and
+#       actively harmful: any future `bun install -g` re-creates the drift.
+# This cleanup is idempotent, scoped tightly to Bun's canonical auto-injection
+# (so user-authored PATH customisations are preserved), and always backs up
+# the rc file before editing it.
+cleanup_legacy_bun_user_state() {
+  [ "$PI_RUNTIME" = "bun" ] || return 0
+  local home rc bak cleaned=0
+  home=$(invoking_home)
+  [ -n "$home" ] && [ -d "$home" ] || return 0
+  [ -d "$home/.bun" ] || return 0
+
+  # (a) Deregister pi from the legacy Bun global tree so bun's own metadata
+  # is consistent. Run as the home's owner so the tree's permissions stay
+  # user-owned; fall back to a best-effort if that's not possible.
+  if [ -x "$home/.bun/bin/bun" ]; then
+    local legacy_owner
+    legacy_owner=$(stat -c '%U' "$home/.bun" 2>/dev/null || echo "")
+    if [ -n "$legacy_owner" ] && [ "$legacy_owner" != "$(id -un)" ] && command -v runuser >/dev/null 2>&1; then
+      $SUDO runuser -u "$legacy_owner" -- env BUN_INSTALL="$home/.bun" \
+        "$home/.bun/bin/bun" remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+    else
+      env BUN_INSTALL="$home/.bun" "$home/.bun/bin/bun" \
+        remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
+    fi
+  fi
+
+  # (b) Belt-and-braces shim removal. bun remove -g usually drops the shim but
+  # has been observed to miss it on partial/legacy installs. The shim is the
+  # file that actually shadows pi in PATH, so this is the load-bearing line.
+  if [ -e "$home/.bun/bin/pi" ]; then
+    rm -f "$home/.bun/bin/pi" 2>/dev/null || $SUDO rm -f "$home/.bun/bin/pi"
+    log "Removed legacy per-user pi shim: $home/.bun/bin/pi"
+    cleaned=1
+  fi
+
+  # (c) Strip Bun's canonical PATH injection from shell rc files. Matches the
+  # exact lines the upstream installer writes — we do NOT touch any other
+  # references to ~/.bun the user may have added themselves.
+  for rc in "$home/.bashrc" "$home/.zshrc" "$home/.profile"; do
+    [ -f "$rc" ] || continue
+    grep -qE '^export BUN_INSTALL="\$HOME/\.bun"$' "$rc" 2>/dev/null || continue
+    bak="$rc.bak.pi-install.$(date +%s)"
+    cp -p "$rc" "$bak" 2>/dev/null || $SUDO cp -p "$rc" "$bak"
+    # Three lines, each matched exactly. Handled independently so a non-canonical
+    # layout (e.g. blank line between them) still gets cleaned.
+    sed -i -E '
+      /^# bun$/d
+      /^export BUN_INSTALL="\$HOME\/\.bun"$/d
+      /^export PATH="\$BUN_INSTALL\/bin:\$PATH"$/d
+    ' "$rc" 2>/dev/null || $SUDO sed -i -E '
+      /^# bun$/d
+      /^export BUN_INSTALL="\$HOME\/\.bun"$/d
+      /^export PATH="\$BUN_INSTALL\/bin:\$PATH"$/d
+    ' "$rc"
+    warn "Removed Bun's auto-injected PATH lines from $rc (backup: $bak)"
+    cleaned=1
+  done
+
+  if [ "$cleaned" = 1 ]; then
+    log "Open a new shell (or run: hash -r) to pick up the cleanup"
+    log "  (the $home/.bun tree itself is left intact in case other tools use it)"
+  fi
+}
+
 # --- Detect which runtime owns /usr/local/bin/pi (readlink -f = resolve all symlinks) ---
 detect_current_runtime() {
   local target
@@ -287,30 +373,14 @@ if [ -n "$current_pi_runtime" ] && [ "$current_pi_runtime" != "$PI_RUNTIME" ]; t
   current_pi_runtime=""
 fi
 
-# Migrate legacy per-user Bun installs ($HOME/.bun) to the system-wide tree.
-# Same runtime, wrong location — runtime-switch logic above doesn't catch this.
-if [ "$current_pi_runtime" = "bun" ] && [ "$PI_RUNTIME" = "bun" ]; then
-  _legacy_pi=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
-  case "$_legacy_pi" in
-    */.bun/*)
-      # readlink -f resolves every symlink in the chain, so $_legacy_pi can be
-      # the final cli.js, not the bun bin shim. Derive the bun root by stripping
-      # from "/.bun/" onward, then re-append "/.bun" — works at any chain depth.
-      _legacy_bun_root="${_legacy_pi%%/.bun/*}/.bun"
-      warn "Legacy per-user Bun install detected ($_legacy_bun_root) — migrating to $BUN_ROOT"
-      if [ -x "$_legacy_bun_root/bin/bun" ]; then
-        env BUN_INSTALL="$_legacy_bun_root" "$_legacy_bun_root/bin/bun" \
-          remove -g @mariozechner/pi-coding-agent >/dev/null 2>&1 || true
-      fi
-      # Belt and braces: drop the shim directly in case bun's uninstall left it.
-      # This matters because ~/.bashrc often has $HOME/.bun/bin earlier in PATH
-      # than /usr/local/bin — a surviving shim shadows the new system-wide pi.
-      [ -e "$_legacy_bun_root/bin/pi" ] && rm -f "$_legacy_bun_root/bin/pi"
-      $SUDO rm -f /usr/local/bin/pi
-      log "  (the $_legacy_bun_root tree itself is left intact in case other tools use it)"
-      ;;
-  esac
-fi
+# If /usr/local/bin/pi currently points into a legacy per-user Bun tree
+# ($HOME/.bun/...), drop it now so the fresh install below can relink cleanly.
+# The comprehensive per-user cleanup (shim, registration, rc pollution) runs
+# after the install completes via cleanup_legacy_bun_user_state.
+_pi_target=$(readlink -f /usr/local/bin/pi 2>/dev/null || true)
+case "$_pi_target" in
+  */.bun/*)  $SUDO rm -f /usr/local/bin/pi ;;
+esac
 
 # Drop a symlink that points at a path that no longer exists (stale from earlier runs)
 [ -L /usr/local/bin/pi ] && [ ! -e /usr/local/bin/pi ] && $SUDO rm -f /usr/local/bin/pi
@@ -348,6 +418,10 @@ case "$_final_target" in
   "$_expected_prefix"/*) ;;
   *) warn "Drift: /usr/local/bin/pi -> $_final_target (expected under $_expected_prefix) — another runtime may still own the symlink" ;;
 esac
+
+# Tidy up legacy per-user Bun artefacts (shim + rc pollution). Idempotent:
+# a no-op on fresh systems, and on already-cleaned systems.
+cleanup_legacy_bun_user_state
 
 # --- Clone or update the config repo ---
 step "Syncing configs"
