@@ -97,19 +97,35 @@ install_node_via_fnm() {
   log "Installing $latest_version via fnm into $FNM_DIR..."
   $SUDO env FNM_DIR="$FNM_DIR" fnm install "$latest_version"
 
-  log "Setting fnm default alias -> $latest_version"
-  $SUDO env FNM_DIR="$FNM_DIR" fnm alias default "$latest_version"
+  # Symlink from the deterministic version path, not the alias — alias layout has bitten
+  # us across fnm versions. The installation root is always node-versions/<ver>/installation.
+  local node_bin_dir="$FNM_DIR/node-versions/$latest_version/installation/bin"
+  [ -d "$node_bin_dir" ] || die "Expected fnm install dir missing: $node_bin_dir"
+  [ -x "$node_bin_dir/node" ] || die "node binary missing at $node_bin_dir/node"
 
-  # fnm's 'default' alias is a symlink to the installation root; bin/ is inside
-  local default_bin="$FNM_DIR/aliases/default/bin"
-  [ -d "$default_bin" ] || die "fnm default alias missing: $default_bin"
+  # Set default alias for shells that source fnm — syntax is 'fnm alias <version> <name>'.
+  # Non-fatal: our /usr/local/bin symlinks already give a working system-wide Node.
+  log "Setting fnm default alias -> $latest_version"
+  $SUDO env FNM_DIR="$FNM_DIR" fnm alias "$latest_version" default || \
+    warn "fnm alias failed (non-fatal — /usr/local/bin symlinks still work)"
 
   # System-wide symlinks so node/npm/npx work without shell init
+  local linked=0
   for bin in node npm npx corepack; do
-    [ -e "$default_bin/$bin" ] && $SUDO ln -sfn "$default_bin/$bin" "/usr/local/bin/$bin"
+    if [ -e "$node_bin_dir/$bin" ]; then
+      $SUDO ln -sfn "$node_bin_dir/$bin" "/usr/local/bin/$bin"
+      log "Linked /usr/local/bin/$bin -> $node_bin_dir/$bin"
+      linked=$((linked + 1))
+    else
+      warn "Expected binary not in fnm install: $node_bin_dir/$bin (skipping)"
+    fi
   done
+  [ "$linked" -gt 0 ] || die "No Node binaries linked — fnm install is broken"
 
-  node_version_ok || die "fnm installed Node but version check still fails"
+  command -v node >/dev/null 2>&1 || die "node not on PATH after symlink — expected /usr/local/bin/node -> $node_bin_dir/node"
+  local installed_major
+  installed_major=$(node -v | sed 's/^v\([0-9]\+\).*/\1/')
+  [ "$installed_major" -ge "$NODE_MIN_MAJOR" ] || die "Installed Node is v$installed_major, need ≥$NODE_MIN_MAJOR"
   log "Installed Node $(node -v), npm $(npm -v) via fnm"
 }
 
