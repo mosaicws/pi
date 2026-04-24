@@ -6,23 +6,30 @@ The installer bootstraps Node.js (latest Current release) via [`fnm`](https://gi
 
 ## Installation — inside a fresh Debian/Ubuntu LXC
 
-### Quick Install
+### Quick Install (recommended — always fetches latest)
 
 ```bash
-sudo apt update && sudo apt install -y curl git ca-certificates && bash -c "$(curl -fsSL "https://raw.githubusercontent.com/mosaicws/pi/main/install.sh?v=$(date +%s)")"
+sudo apt update && sudo apt install -y curl git ca-certificates && \
+  t=$(mktemp -d) && git clone --depth 1 https://github.com/mosaicws/pi.git "$t" && bash "$t/install.sh"; rm -rf "$t"
 ```
 
-This single command installs the three apt prereqs and runs the installer. Works on fresh Debian 13 / Ubuntu. Drop the `sudo` if you're already root.
+`git clone --depth 1` pulls the latest `main` directly from Git — bypassing `raw.githubusercontent.com` entirely. That's the only approach that's fully immune to GitHub's raw-hosting cache, which can serve stale content for 30–60 seconds after a push (the query-string `?v=` buster invalidates Fastly's edge but not the origin propagation delay).
 
-> The `?v=$(date +%s)` query string is a cache-buster — it forces GitHub's raw CDN to serve the latest `install.sh` instead of a cached copy (the CDN holds raw files for ~5 min). Safe to leave in permanently; it's ignored by GitHub and has no effect on the script.
+### Quick Install (curl one-shot, may lag briefly after a push)
 
-### Review First (Recommended)
+```bash
+bash -c "$(curl -fsSL "https://raw.githubusercontent.com/mosaicws/pi/main/install.sh?v=$(date +%s)")"
+```
+
+One-liner alternative if you don't want `git` in the bootstrap. The `?v=$(date +%s)` query string busts Fastly's CDN edge cache; if you run this within ~60 s of pushing to `main`, you may still get the previous version.
+
+### Review First (Recommended for untrusted sources)
 
 ```bash
 sudo apt update && sudo apt install -y curl git ca-certificates
-curl -fsSL "https://raw.githubusercontent.com/mosaicws/pi/main/install.sh?v=$(date +%s)" -o install.sh
-less install.sh
-bash install.sh
+git clone --depth 1 https://github.com/mosaicws/pi.git /tmp/pi-install
+less /tmp/pi-install/install.sh
+bash /tmp/pi-install/install.sh
 ```
 
 ### Use Bun instead of Node (experimental)
@@ -30,7 +37,8 @@ bash install.sh
 pi is published to npm and `bun install -g` works, but Bun's Node-API coverage isn't complete — some pi extensions may misbehave. Core CLI works.
 
 ```bash
-sudo apt update && sudo apt install -y curl git ca-certificates unzip && PI_RUNTIME=bun bash -c "$(curl -fsSL "https://raw.githubusercontent.com/mosaicws/pi/main/install.sh?v=$(date +%s)")"
+sudo apt update && sudo apt install -y curl git ca-certificates unzip && \
+  t=$(mktemp -d) && git clone --depth 1 https://github.com/mosaicws/pi.git "$t" && PI_RUNTIME=bun bash "$t/install.sh"; rm -rf "$t"
 ```
 
 ## Environment variables
