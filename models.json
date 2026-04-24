@@ -151,67 +151,51 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen3.6-27b@iq4_nl",
-          "name": "Qwen3.6 27B dense IQ4_NL (llama-swap, fastest 27B)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 16384,
-          "maxTokens": 8192
-        },
-        {
-          "id": "qwen3.6-27b@q4_k_m",
-          "name": "Qwen3.6 27B dense Q4_K_M (llama-swap, baseline)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 16384,
-          "maxTokens": 8192
-        },
-        {
-          "id": "qwen3.6-27b@q4_k_m+spec",
-          "name": "Qwen3.6 27B dense Q4_K_M + speculative (slower than IQ4_NL)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 16384,
-          "maxTokens": 8192
-        },
-        {
-          "id": "qwen3.6-27b@q4_k_m+spec-64k",
-          "name": "Qwen3.6 27B dense Q4_K_M + speculative 64K",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 65536,
-          "maxTokens": 8192
-        },
-        {
-          "id": "qwen3.6-27b@ud-iq2_xxs-64k",
-          "name": "Qwen3.6 27B dense UD-IQ2_XXS 64K (fully on GPU)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 65536,
-          "maxTokens": 8192
-        },
-        {
           "id": "qwen3.6-27b@ud-iq2_xxs-128k",
-          "name": "Qwen3.6 27B dense UD-IQ2_XXS 128K (slow — long-ctx only)",
+          "name": "Qwen3.6 27B dense UD-IQ2_XXS — 128K (37 t/s, fastest dense 27B)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
           "maxTokens": 8192
         },
         {
+          "id": "qwen3.6-27b@ud-iq2_xxs-64k",
+          "name": "Qwen3.6 27B dense UD-IQ2_XXS — 64K (37 t/s)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 8192
+        },
+        {
           "id": "qwen3.6-27b@ud-iq2_xxs-96k",
-          "name": "Qwen3.6 27B dense UD-IQ2_XXS 96K",
+          "name": "Qwen3.6 27B dense UD-IQ2_XXS — 96K",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 98304,
           "maxTokens": 8192
         },
         {
-          "id": "qwen3.5-9b@q4_k_m",
-          "name": "Qwen3.5 9B (llama-swap)",
+          "id": "qwen3.6-27b@ud-iq2_m-128k",
+          "name": "Qwen3.6 27B dense UD-IQ2_M — 128K (10 t/s, higher quality than XXS)",
           "reasoning": true,
           "input": ["text"],
-          "contextWindow": 32768,
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen3.6-27b@ud-iq2_m-64k",
+          "name": "Qwen3.6 27B dense UD-IQ2_M — 64K (11 t/s, higher quality than XXS)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen3.5-9b@q4_k_m",
+          "name": "Qwen3.5 9B (llama-swap) — 64K",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
           "maxTokens": 8192
         }
       ]
