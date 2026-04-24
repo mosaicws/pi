@@ -9,16 +9,18 @@ The installer bootstraps Node.js (latest Current release) via [`fnm`](https://gi
 ### Quick Install
 
 ```bash
-sudo apt update && sudo apt install -y curl git ca-certificates && bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
+sudo apt update && sudo apt install -y curl git ca-certificates && bash -c "$(curl -fsSL "https://raw.githubusercontent.com/mosaicws/pi/main/install.sh?v=$(date +%s)")"
 ```
 
 This single command installs the three apt prereqs and runs the installer. Works on fresh Debian 13 / Ubuntu. Drop the `sudo` if you're already root.
+
+> The `?v=$(date +%s)` query string is a cache-buster — it forces GitHub's raw CDN to serve the latest `install.sh` instead of a cached copy (the CDN holds raw files for ~5 min). Safe to leave in permanently; it's ignored by GitHub and has no effect on the script.
 
 ### Review First (Recommended)
 
 ```bash
 sudo apt update && sudo apt install -y curl git ca-certificates
-curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh -o install.sh
+curl -fsSL "https://raw.githubusercontent.com/mosaicws/pi/main/install.sh?v=$(date +%s)" -o install.sh
 less install.sh
 bash install.sh
 ```
@@ -28,7 +30,7 @@ bash install.sh
 pi is published to npm and `bun install -g` works, but Bun's Node-API coverage isn't complete — some pi extensions may misbehave. Core CLI works.
 
 ```bash
-sudo apt update && sudo apt install -y curl git ca-certificates unzip && PI_RUNTIME=bun bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
+sudo apt update && sudo apt install -y curl git ca-certificates unzip && PI_RUNTIME=bun bash -c "$(curl -fsSL "https://raw.githubusercontent.com/mosaicws/pi/main/install.sh?v=$(date +%s)")"
 ```
 
 ## Environment variables
