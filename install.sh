@@ -411,6 +411,20 @@ case "$PI_RUNTIME" in
   bun)
     log "Installing/updating pi via Bun (experimental, current: $_pre_ver)..."
     $SUDO env BUN_INSTALL="$BUN_ROOT" PATH="$BUN_ROOT/bin:$PATH" bun install -g @mariozechner/pi-coding-agent
+    # `bun install -g` drops $BUN_ROOT/bin/pi as a direct symlink to the
+    # package's dist/cli.js, which carries `#!/usr/bin/env node`. On a
+    # Bun-only box (no Node on PATH) invoking that shim fails with
+    # `env: 'node': No such file or directory`. Replace the symlink with a
+    # tiny bash wrapper that hands the script to bun explicitly, bypassing
+    # the node shebang.
+    _pi_cli=$(readlink -f "$BUN_ROOT/bin/pi" 2>/dev/null || true)
+    [ -n "$_pi_cli" ] && [ -e "$_pi_cli" ] || die "bun install -g finished but $BUN_ROOT/bin/pi missing or dangling"
+    $SUDO rm -f "$BUN_ROOT/bin/pi"
+    $SUDO tee "$BUN_ROOT/bin/pi" >/dev/null <<EOF
+#!/usr/bin/env bash
+exec "$BUN_ROOT/bin/bun" "$_pi_cli" "\$@"
+EOF
+    $SUDO chmod 755 "$BUN_ROOT/bin/pi"
     pi_src="$BUN_ROOT/bin/pi"
     ;;
 esac
