@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # pi config installer — idempotent
-# Default:  installs Node.js Current via fnm (https://github.com/Schniz/fnm) — clean, no apt bloat
-# Opt-in:   PI_RUNTIME=bun bash -c "..."  — uses Bun instead of Node
+# Default:  installs Bun system-wide to /usr/local/bun
+# Opt-in:   PI_RUNTIME=node bash -c "..."  — uses Node.js Current via fnm (https://github.com/Schniz/fnm) instead
 #
-# If run interactively (TTY), prompts for Node vs Bun; otherwise defaults to Node.
+# If run interactively (TTY), prompts for Node vs Bun; otherwise defaults to Bun.
 #
 # Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/mosaicws/pi/main/install.sh)"
 set -euo pipefail
@@ -329,7 +329,7 @@ uninstall_pi_from() {
 # Default to whatever is currently installed (keeps Enter a safe no-op on re-runs).
 if [ "$PI_RUNTIME" = "auto" ] && [ -t 0 ]; then
   _current=$(detect_current_runtime)
-  _default="${_current:-node}"
+  _default="${_current:-bun}"
 
   # If pi is already installed, show version + runtime version so the user can
   # verify what they're switching from.
@@ -359,8 +359,8 @@ if [ "$PI_RUNTIME" = "auto" ] && [ -t 0 ]; then
     *)      die "Invalid choice: '$_rt_choice' (expected n or b)" ;;
   esac
 fi
-# Non-TTY fallback: default auto -> node
-[ "$PI_RUNTIME" = "auto" ] && PI_RUNTIME=node
+# Non-TTY fallback: default auto -> bun
+[ "$PI_RUNTIME" = "auto" ] && PI_RUNTIME=bun
 
 # --- Runtime selection ---
 step "Runtime: $PI_RUNTIME"
