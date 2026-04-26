@@ -31,16 +31,48 @@
       },
       "models": [
         {
+          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-256k",
+          "name": "Qwen3.6 35B A3B — text 256K UD-Q6_K_XL (37/31/24 t/s @ light/92K/220K, top quality + huge ctx)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 16384
+        },
+        {
           "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-128k",
-          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q6_K_XL (37 t/s, highest quality)",
+          "name": "Qwen3.6 35B A3B — text 128K UD-Q6_K_XL Q8 KV (38/30 t/s @ light/110K, top quality)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
           "maxTokens": 16384
         },
         {
+          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-100k",
+          "name": "Qwen3.6 35B A3B — text 100K UD-Q6_K_XL Q8 KV (37 t/s light, top quality alt)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 102400,
+          "maxTokens": 16384
+        },
+        {
           "id": "qwen3.6-35b-a3b-text@ud-q5_k_xl-128k",
-          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q5_K_XL (48 t/s, quality sweet spot)",
+          "name": "Qwen3.6 35B A3B — text 128K UD-Q5_K_XL Q8 KV (46/34 t/s @ light/110K, quality sweet spot)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@ud-q5_k_xl-100k",
+          "name": "Qwen3.6 35B A3B — text 100K UD-Q5_K_XL Q8 KV (49 t/s light, quality alt)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 102400,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@ud-iq4_nl_xl-128k",
+          "name": "Qwen3.6 35B A3B — text 128K UD-IQ4_NL_XL Q8 KV (55/43 t/s @ light/110K, daily-driver pick)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
@@ -48,18 +80,34 @@
         },
         {
           "id": "qwen3.6-35b-a3b-text@ud-q4_k_xl-128k",
-          "name": "Qwen3.6 35B A3B — text-only 128K UD-Q4_K_XL (56 t/s, balanced)",
+          "name": "Qwen3.6 35B A3B — text 128K UD-Q4_K_XL Q8 KV (54/38 t/s @ light/110K, balanced)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
           "maxTokens": 16384
         },
         {
+          "id": "qwen3.6-35b-a3b-text@ud-q4_k_xl-100k",
+          "name": "Qwen3.6 35B A3B — text 100K UD-Q4_K_XL Q8 KV (56 t/s light, balanced alt)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 102400,
+          "maxTokens": 16384
+        },
+        {
           "id": "qwen3.6-35b-a3b-text@q4_k_m-128k",
-          "name": "Qwen3.6 35B A3B — text-only 128K Q4_K_M (62 t/s, speed)",
+          "name": "Qwen3.6 35B A3B — text 128K Q4_K_M Q8 KV (60/40 t/s @ light/110K, speed pick)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@q4_k_m-100k",
+          "name": "Qwen3.6 35B A3B — text 100K Q4_K_M Q8 KV (63 t/s light, fastest 100K)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 102400,
           "maxTokens": 16384
         },
         {
