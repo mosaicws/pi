@@ -31,46 +31,6 @@
       },
       "models": [
         {
-          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-256k",
-          "name": "Qwen3.6 35B A3B — text 256K UD-Q6_K_XL (37/31/24 t/s @ light/92K/220K, top quality + huge ctx)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 262144,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-128k",
-          "name": "Qwen3.6 35B A3B — text 128K UD-Q6_K_XL Q8 KV (38/30 t/s @ light/110K, top quality)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 131072,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-100k",
-          "name": "Qwen3.6 35B A3B — text 100K UD-Q6_K_XL Q8 KV (37 t/s light, top quality alt)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 102400,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-text@ud-q5_k_xl-128k",
-          "name": "Qwen3.6 35B A3B — text 128K UD-Q5_K_XL Q8 KV (46/34 t/s @ light/110K, quality sweet spot)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 131072,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-text@ud-q5_k_xl-100k",
-          "name": "Qwen3.6 35B A3B — text 100K UD-Q5_K_XL Q8 KV (49 t/s light, quality alt)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 102400,
-          "maxTokens": 16384
-        },
-        {
           "id": "qwen3.6-35b-a3b-text@ud-iq4_nl_xl-128k",
           "name": "Qwen3.6 35B A3B — text 128K UD-IQ4_NL_XL Q8 KV (55/43 t/s @ light/110K, daily-driver pick)",
           "reasoning": true,
@@ -87,6 +47,30 @@
           "maxTokens": 16384
         },
         {
+          "id": "qwen3.6-35b-a3b-text@ud-q5_k_xl-128k",
+          "name": "Qwen3.6 35B A3B — text 128K UD-Q5_K_XL Q8 KV (46/34 t/s @ light/110K, quality sweet spot)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-128k",
+          "name": "Qwen3.6 35B A3B — text 128K UD-Q6_K_XL Q8 KV (38/30 t/s @ light/110K, top quality)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-256k",
+          "name": "Qwen3.6 35B A3B — text 256K UD-Q6_K_XL (37/31/24 t/s @ light/92K/220K, top quality + huge ctx)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 16384
+        },
+        {
           "id": "qwen3.6-35b-a3b-text@ud-q4_k_xl-100k",
           "name": "Qwen3.6 35B A3B — text 100K UD-Q4_K_XL Q8 KV (56 t/s light, balanced alt)",
           "reasoning": true,
@@ -95,8 +79,24 @@
           "maxTokens": 16384
         },
         {
+          "id": "qwen3.6-35b-a3b-text@ud-q5_k_xl-100k",
+          "name": "Qwen3.6 35B A3B — text 100K UD-Q5_K_XL Q8 KV (49 t/s light, quality alt)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 102400,
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.6-35b-a3b-text@ud-q6_k_xl-100k",
+          "name": "Qwen3.6 35B A3B — text 100K UD-Q6_K_XL Q8 KV (37 t/s light, top quality alt)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 102400,
+          "maxTokens": 16384
+        },
+        {
           "id": "qwen3.6-35b-a3b-text@q4_k_m-128k",
-          "name": "Qwen3.6 35B A3B — text 128K Q4_K_M Q8 KV (60/40 t/s @ light/110K, speed pick)",
+          "name": "Qwen3.6 35B A3B — text 128K Q4_K_M Q8 KV (60/40 t/s @ light/110K, bartowski speed pick)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
@@ -104,17 +104,17 @@
         },
         {
           "id": "qwen3.6-35b-a3b-text@q4_k_m-100k",
-          "name": "Qwen3.6 35B A3B — text 100K Q4_K_M Q8 KV (63 t/s light, fastest 100K)",
+          "name": "Qwen3.6 35B A3B — text 100K Q4_K_M Q8 KV (63 t/s light, bartowski fastest 100K)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 102400,
           "maxTokens": 16384
         },
         {
-          "id": "qwen3.6-35b-a3b@q4_k_m",
-          "name": "Qwen3.6 35B A3B — vision",
+          "id": "qwen3.6-35b-a3b-text@q4_k_m",
+          "name": "Qwen3.6 35B A3B — text-only 65K (bartowski, fastest)",
           "reasoning": true,
-          "input": ["text", "image"],
+          "input": ["text"],
           "contextWindow": 65536,
           "maxTokens": 16384
         },
@@ -127,74 +127,34 @@
           "maxTokens": 16384
         },
         {
-          "id": "qwen3.6-35b-a3b-text@q4_k_m",
-          "name": "Qwen3.6 35B A3B — text-only (fastest)",
+          "id": "qwen3.6-35b-a3b@q4_k_m",
+          "name": "Qwen3.6 35B A3B — vision 65K",
           "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 65536,
-          "maxTokens": 16384
-        },
-        {
-          "id": "qwen3.6-35b-a3b-heretic@q4_k_m",
-          "name": "Qwen3.6 35B A3B Heretic — text-only",
-          "reasoning": true,
-          "input": ["text"],
+          "input": ["text", "image"],
           "contextWindow": 65536,
           "maxTokens": 16384
         },
         {
           "id": "qwen3.6-35b-a3b-heretic@q4_k_m-128k",
-          "name": "Qwen3.6 35B A3B Heretic — text-only 128K",
+          "name": "Qwen3.6 35B A3B Heretic — text-only 128K (abliterated)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 131072,
           "maxTokens": 16384
         },
         {
-          "id": "gemma-4-26b-a4b-it@q4_k_xl",
-          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 32K",
-          "reasoning": false,
-          "input": ["text", "image"],
-          "contextWindow": 32768,
-          "maxTokens": 8192
+          "id": "qwen3.6-35b-a3b-heretic@q4_k_m",
+          "name": "Qwen3.6 35B A3B Heretic — text-only 65K (abliterated)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 16384
         },
         {
-          "id": "gemma-4-26b-a4b-it@q4_k_xl-128k",
-          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 128K",
-          "reasoning": false,
-          "input": ["text", "image"],
-          "contextWindow": 131072,
-          "maxTokens": 8192
-        },
-        {
-          "id": "gemma-4-26b-a4b-it-text@q4_k_xl",
-          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 32K (fastest)",
+          "id": "gemma-4-26b-a4b-it-text@iq4_nl_xl-128k",
+          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — text-only 128K (56 t/s)",
           "reasoning": false,
           "input": ["text"],
-          "contextWindow": 32768,
-          "maxTokens": 8192
-        },
-        {
-          "id": "gemma-4-26b-a4b-it-text@q4_k_xl-128k",
-          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 128K",
-          "reasoning": false,
-          "input": ["text"],
-          "contextWindow": 131072,
-          "maxTokens": 8192
-        },
-        {
-          "id": "gemma-4-26b-a4b-it@iq4_nl_xl",
-          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 32K (fastest vision)",
-          "reasoning": false,
-          "input": ["text", "image"],
-          "contextWindow": 32768,
-          "maxTokens": 8192
-        },
-        {
-          "id": "gemma-4-26b-a4b-it@iq4_nl_xl-128k",
-          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 128K",
-          "reasoning": false,
-          "input": ["text", "image"],
           "contextWindow": 131072,
           "maxTokens": 8192
         },
@@ -207,11 +167,51 @@
           "maxTokens": 8192
         },
         {
-          "id": "gemma-4-26b-a4b-it-text@iq4_nl_xl-128k",
-          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — text-only 128K (56 t/s)",
+          "id": "gemma-4-26b-a4b-it-text@q4_k_xl-128k",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 128K (higher fidelity)",
           "reasoning": false,
           "input": ["text"],
           "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
+          "id": "gemma-4-26b-a4b-it-text@q4_k_xl",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — text-only 32K (higher fidelity)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 8192
+        },
+        {
+          "id": "gemma-4-26b-a4b-it@iq4_nl_xl-128k",
+          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 128K",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
+          "id": "gemma-4-26b-a4b-it@iq4_nl_xl",
+          "name": "Gemma 4 26B A4B it UD-IQ4_NL_XL — vision 32K (fastest vision)",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 32768,
+          "maxTokens": 8192
+        },
+        {
+          "id": "gemma-4-26b-a4b-it@q4_k_xl-128k",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 128K (higher fidelity)",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        },
+        {
+          "id": "gemma-4-26b-a4b-it@q4_k_xl",
+          "name": "Gemma 4 26B A4B it UD-Q4_K_XL — vision 32K (higher fidelity)",
+          "reasoning": false,
+          "input": ["text", "image"],
+          "contextWindow": 32768,
           "maxTokens": 8192
         },
         {
@@ -223,19 +223,19 @@
           "maxTokens": 8192
         },
         {
-          "id": "qwen3.6-27b@ud-iq2_xxs-64k",
-          "name": "Qwen3.6 27B dense UD-IQ2_XXS — 64K (37 t/s)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 65536,
-          "maxTokens": 8192
-        },
-        {
           "id": "qwen3.6-27b@ud-iq2_xxs-96k",
           "name": "Qwen3.6 27B dense UD-IQ2_XXS — 96K",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 98304,
+          "maxTokens": 8192
+        },
+        {
+          "id": "qwen3.6-27b@ud-iq2_xxs-64k",
+          "name": "Qwen3.6 27B dense UD-IQ2_XXS — 64K (37 t/s)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 65536,
           "maxTokens": 8192
         },
         {
